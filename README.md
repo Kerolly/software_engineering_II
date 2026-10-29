@@ -1,6 +1,6 @@
-# ByteBee
+# SE2
 
-ByteBee (working name) is a LeetCode-style learning platform. Users solve programming problems in the browser, their code is run against test cases, and they earn XP, levels, badges and a daily streak. The theme is a bee: honey is XP, activity is shown on a honeycomb grid, and ranks go from larva to queen.
+SE2 (the final product name is not decided yet) is a LeetCode-style learning platform. Users solve programming problems in the browser, their code is run against test cases, and they earn XP, levels, badges and a daily streak. The theme is a bee: honey is XP, activity is shown on a honeycomb grid, and ranks go from larva to queen.
 
 University project for **Software Engineering II**, built by team **TTVZ**.
 
@@ -8,11 +8,11 @@ University project for **Software Engineering II**, built by team **TTVZ**.
 
 | Layer | Technology |
 | --- | --- |
-| Backend | Java 21, Spring Boot, Maven, Spring Data JPA, springdoc-openapi |
+| Backend | Java 25, Spring Boot, Maven, Spring Data JPA, springdoc-openapi |
 | Frontend | React, TypeScript, Vite, TanStack Query, Axios, Tailwind CSS, DaisyUI |
 | API client | Generated with Orval from the backend OpenAPI spec |
 | Auth | Logto (self-hosted) |
-| Database | PostgreSQL 17 |
+| Database | PostgreSQL 18 |
 | Tooling | Docker Compose, just |
 
 ## Repository layout
@@ -23,18 +23,21 @@ frontend/             React + Vite app
 infra/postgres/init/  SQL run on first database start
 docs/                 Documentation and decisions
 .github/              PR template and CI workflows
+scripts/              Setup scripts used by `just setup`
 ```
 
 ## Running locally
 
-> The Docker Compose setup and the `justfile` are added in separate setup tasks. Until they are merged, the commands below do not work yet.
+Dev runs PostgreSQL and Logto in Docker and the backend and frontend directly on your machine, for fast hot reload.
 
-Requirements: Docker and [just](https://github.com/casey/just). A local JDK and Node are optional.
+Install [Git](https://git-scm.com) and [just](https://github.com/casey/just) first (`winget install Casey.Just` on Windows, `brew install just` on macOS). Then:
 
 ```bash
-cp .env.example .env
-just up
+just setup   # once: checks/installs JDK 25 and Node 22+, creates .env, downloads dependencies, and warns if Docker is missing
+just dev     # every day: starts Postgres, Logto, the backend and the frontend
 ```
+
+`just setup` can be run again at any time. If it installs a tool, open a new terminal and run it again.
 
 | Service | URL |
 | --- | --- |

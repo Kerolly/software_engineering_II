@@ -4,7 +4,7 @@ Context for Claude Code. Read this before working on the repository.
 
 ## Project
 
-**ByteBee** (working name) is a LeetCode-style learning platform: users solve programming problems in the browser, their code is executed and checked against test cases, and they earn progress through gamification (XP, levels, badges) and a **daily streak**.
+**SE2** (the final product name is not decided yet) is a LeetCode-style learning platform: users solve programming problems in the browser, their code is executed and checked against test cases, and they earn progress through gamification (XP, levels, badges) and a **daily streak**.
 
 - University project for **Software Engineering II**, built by team **TTVZ** (4 people).
 - Mascot / theme: a bee 🐝 — honey as XP, honeycomb (hexagon) activity grid, ranks from larva to queen. Use this theme for gamification-related naming and UI where it fits.
@@ -24,11 +24,11 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 
 ## Tech stack
 
-- **Backend:** Java 21, Spring Boot, Maven, Spring Data JPA, PostgreSQL, Actuator, springdoc-openapi (OpenAPI spec for client generation)
+- **Backend:** Java 25, Spring Boot, Maven, Spring Data JPA, PostgreSQL, Actuator, springdoc-openapi (OpenAPI spec for client generation)
 - **Frontend:** React, TypeScript, Vite, TanStack Query, Axios, Tailwind CSS, DaisyUI
 - **API client:** generated automatically with **Orval** from the backend OpenAPI spec (plus Zod schemas)
 - **Auth:** **Logto**, self-hosted in Docker
-- **Database:** PostgreSQL 17
+- **Database:** PostgreSQL 18
 - **Tooling:** Docker / Docker Compose for everything, **just** as the task runner
 - **Hosting (planned):** Oracle Cloud Free Tier ARM VM, with Cloudflare in front (DNS, proxy, SSL)
 
@@ -42,7 +42,8 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 │   └── postgres/init/    # SQL run on first DB start (creates the `logto` database)
 ├── docs/                 # documentation, decisions
 ├── .github/              # PR template, CI workflows
-├── docker-compose.yml
+├── scripts/              # setup scripts used by `just setup`
+├── docker-compose.yml    # dev infrastructure (Postgres + Logto)
 ├── justfile
 ├── .env.example          # committed; copy to .env locally (never commit .env)
 ├── .gitignore
@@ -54,42 +55,45 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 
 ## Local development
 
-Everything runs in Docker. Local JDK and Node are optional.
+Hybrid setup: **PostgreSQL and Logto run in Docker, the backend and the frontend run on the host** (fast hot reload, real debugger). This needs **JDK 25**, **Node 22+** and **Docker** installed.
 
 ```bash
-cp .env.example .env
-just up
+just setup   # once: checks/installs JDK and Node, creates .env, downloads dependencies, warns if Docker is missing
+just dev     # every day: infrastructure + backend + frontend
 ```
+
+`just setup` is idempotent. If it installs a tool, open a new terminal and run it again. It never installs Docker (install it yourself); it only checks it at the end.
 
 | Service | URL | Notes |
 | --- | --- | --- |
-| Frontend | http://localhost:5173 | Vite dev server, hot reload (polling enabled) |
-| Backend | http://localhost:8080 | Health: `/actuator/health` |
+| Frontend | http://localhost:5173 | Vite dev server with HMR; `/api` is proxied to the backend |
+| Backend | http://localhost:8080 | Health: `/actuator/health`, OpenAPI: `/v3/api-docs` |
 | Logto | http://localhost:3001 | Auth endpoint |
 | Logto Admin | http://localhost:3002 | Admin console |
-| Postgres | localhost:5432 | DB `bytebee`; Logto uses a separate DB `logto` on the same server |
+| Postgres | localhost:5432 | DB `se2`; Logto uses a separate DB `logto` on the same server |
 
 ### Docker Compose notes
 
-- Compose project name is fixed to `bytebee`, so the data volume is `bytebee_postgres-data`.
-- Backend waits for Postgres to be healthy. Configuration comes from `SPRING_DATASOURCE_*` env vars, not from `application.properties`.
-- Backend code changes require `just restart backend`. Frontend reloads automatically.
-- Frontend uses an anonymous volume for `/app/node_modules`.
-- Logto runs `npm run cli db seed -- --swe && npm start` (seeds only if needed). Pin `LOGTO_VERSION` in `.env` to a concrete tag.
+- `docker-compose.yml` is dev only (Postgres + Logto). The production-like stack is `docker-compose.prod.yml` (planned, with Caddy serving the frontend and proxying `/api`).
+- Compose project names are fixed (`se2-dev` for dev, `se2-prod` for prod), so the dev data volume is `se2-dev_postgres-data`.
+- The backend runs on the host, so `SPRING_DATASOURCE_URL` in `.env` points to `localhost`. `just` loads `.env` automatically (`set dotenv-load`). Configuration comes from `SPRING_DATASOURCE_*` env vars, not from `application.properties`.
+- Logto runs `npm run cli db seed -- --swe && npm start` (seeds only if needed). `LOGTO_VERSION` is pinned to a concrete tag in `.env`.
 
 ### just commands
 
 | Command | What it does |
 | --- | --- |
 | `just` | List all commands |
-| `just up` / `just down` | Start (with rebuild) / stop the environment |
-| `just restart <service>` | Restart one service |
-| `just logs [service]` | Follow logs |
+| `just setup` | Install and check everything needed for development |
+| `just dev` | Start infrastructure, backend and frontend (Ctrl+C stops the apps) |
+| `just infra` / `just down` | Start / stop only PostgreSQL and Logto |
+| `just dev-backend` / `just dev-frontend` | Run one app on the host |
+| `just logs [service]` | Follow logs of the Docker services |
 | `just ps` | Container status |
-| `just test` | Run backend and frontend tests |
-| `just generate-api` | Regenerate the Orval API client (backend must be running) |
 | `just db-shell` | psql into the app database |
 | `just db-reset` | **Deletes all local data**, including Logto accounts (asks for confirmation) |
+
+Planned: `just test`, `just generate-api` (Orval, once the first API endpoint exists), `just prod`.
 
 ## Code execution and security
 
@@ -130,8 +134,9 @@ The Jira code must appear in branches, commits and PR titles so the GitHub ↔ J
 
 - Never commit `.env`, passwords, API keys or tokens. All config goes through environment variables with a matching entry in `.env.example`.
 - Keep files with LF line endings (Windows teammates; `mvnw` breaks with CRLF).
+- Application endpoints live under `/api`; Actuator and OpenAPI stay at the root.
 - Do **not** add Spring Security / OAuth2 Resource Server until the auth task: without configuration it locks every endpoint, including the healthcheck.
-- Inside Docker, the Orval spec URL is `http://backend:8080/v3/api-docs` (service name, not `localhost`).
+- The Orval spec URL is `http://localhost:8080/v3/api-docs` (the backend runs on the host in dev).
 - Never edit the generated API client by hand; change the backend and run `just generate-api`.
 - Prefer small, focused changes that map to a single Jira task.
 - Anything touching code execution or the sandbox must be reviewed with security in mind; flag risks explicitly.
@@ -160,7 +165,7 @@ The Jira code must appear in branches, commits and PR titles so the GitHub ↔ J
 
 ## Open decisions
 
-- Final product name and GitHub organization name (ByteBee is the working name)
+- Final product name and GitHub organization name (SE2 is used as the placeholder name everywhere: DB, Compose project, env vars)
 - Supported languages at launch (Python only, or also Java / C++ / JavaScript)
 - Judge0 vs. a custom sandbox for server-side execution
 - Code editor: Monaco vs. CodeMirror
