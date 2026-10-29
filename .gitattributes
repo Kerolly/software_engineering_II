@@ -1,0 +1,22 @@
+# Normalize all text files to LF (mvnw and shell scripts break with CRLF)
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.jar binary
