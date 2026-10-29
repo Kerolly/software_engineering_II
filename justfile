@@ -34,7 +34,7 @@ db-shell:
 db-reset:
     docker compose down -v
 
-mvnw := if os_family() == "windows" { "mvnw.cmd" } else { "./mvnw" }
+mvnw := if os_family() == "windows" { '.\mvnw.cmd' } else { "./mvnw" }
 
 # Start everything for development: infrastructure in Docker, backend and frontend on the host
 dev: infra dev-apps
