@@ -30,7 +30,7 @@ scripts/              Setup scripts used by `just setup`
 
 Dev runs PostgreSQL and Logto in Docker and the backend and frontend directly on your machine, for fast hot reload.
 
-Install [Git](https://git-scm.com) and [just](https://github.com/casey/just) first (`winget install Casey.Just` on Windows, `brew install just` on macOS). Then:
+Install [Git](https://git-scm.com) and [just](https://github.com/casey/just) first (`winget install Casey.Just` on Windows, `brew install just` on macOS, `sudo apt install just` on Debian/Ubuntu or `sudo dnf install just` on Fedora; other options in the [just docs](https://github.com/casey/just#installation)). Then:
 
 ```bash
 just setup   # once: checks/installs JDK 25 and Node 22+, creates .env, downloads dependencies, and warns if Docker is missing

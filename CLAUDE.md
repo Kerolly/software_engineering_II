@@ -88,12 +88,14 @@ just dev     # every day: infrastructure + backend + frontend
 | `just dev` | Start infrastructure, backend and frontend (Ctrl+C stops the apps) |
 | `just infra` / `just down` | Start / stop only PostgreSQL and Logto |
 | `just dev-backend` / `just dev-frontend` | Run one app on the host |
+| `just test` | Run all tests (`test-backend` also starts PostgreSQL; `test-frontend` runs Vitest) |
+| `just up` / `just restart [service]` | `up` is an alias of `infra`; restart the Docker services |
 | `just logs [service]` | Follow logs of the Docker services |
 | `just ps` | Container status |
 | `just db-shell` | psql into the app database |
 | `just db-reset` | **Deletes all local data**, including Logto accounts (asks for confirmation) |
 
-Planned: `just test`, `just generate-api` (Orval, once the first API endpoint exists), `just prod`.
+Planned: `just generate-api` (Orval, once the first API endpoint exists), `just prod`.
 
 ## Code execution and security
 

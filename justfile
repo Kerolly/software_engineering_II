@@ -13,9 +13,15 @@ setup:
 infra:
     docker compose up -d --wait
 
+alias up := infra
+
 # Stop the dev infrastructure
 down:
     docker compose down
+
+# Restart the Docker services, optionally just one
+restart service="":
+    docker compose restart {{service}}
 
 # Follow logs, optionally for one service
 logs service="":
@@ -33,6 +39,24 @@ db-shell:
 [confirm("This deletes ALL local data, including Logto accounts. Continue?")]
 db-reset:
     docker compose down -v
+
+[private]
+db-up:
+    docker compose up -d --wait postgres
+
+# Run all tests
+test: test-backend test-frontend
+
+# Run the backend tests (starts PostgreSQL if needed)
+[working-directory('backend')]
+test-backend: db-up
+    {{mvnw}} -B test
+
+# Run the frontend tests
+[working-directory('frontend')]
+test-frontend:
+    npm install
+    npm test
 
 mvnw := if os_family() == "windows" { '.\mvnw.cmd' } else { "./mvnw" }
 
