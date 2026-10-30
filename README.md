@@ -196,6 +196,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Team workflow, Jira, branch, commit and pull request rules |
 | [docs/api-conventions.md](docs/api-conventions.md) | Rules for every HTTP endpoint, with an example |
 | [CLAUDE.md](CLAUDE.md) | Project context for Claude Code and other AI assistants (stack, commands, security rules, open decisions) |
+| [docs/roadmap.md](docs/roadmap.md) | The first big tasks of each teammate, in order, with dependencies |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | The checklist every pull request starts with |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Continuous integration: backend, frontend and naming checks |
 
@@ -207,7 +208,7 @@ The short version, in full in [CONTRIBUTING.md](CONTRIBUTING.md):
 | --- | --- | --- |
 | Jira task | `[TTVZ][Area] Description` | `[TTVZ][Auth] Implement login with Logto` |
 | Branch | `type/SCRUM-<nr>-short-description` | `feat/SCRUM-58-login-with-logto` |
-| Commit | `type: description` | `feat: add login button to navbar` |
+| Commit | `type(scope): description` | `feat(auth): add login button to navbar` |
 | Pull request | `SCRUM-<nr> Description` | `SCRUM-58 Implement login with Logto` |
 
 Before opening a pull request, run `just test`. CI runs the same checks and must be green.

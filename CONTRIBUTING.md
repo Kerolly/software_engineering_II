@@ -36,17 +36,17 @@ docs/SCRUM-8-contributing-guide
 
 ## Commits
 
-Format: `type: description`. Lowercase, imperative mood, no trailing period.
+Format: `type(scope): description`. Lowercase, imperative mood, no trailing period. The scope is the part of the project the commit touches, in one lowercase word: for example `auth`, `problems`, `execution`, `gamification`, `setup`, `docs`, `ci`, `deps`.
 
 ```text
-feat: add login button to navbar
-fix: reset streak at local midnight
-docs: describe the branch naming rules
+feat(auth): add login button to navbar
+fix(gamification): reset streak at local midnight
+docs(contributing): describe the branch naming rules
 ```
 
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
 
-Mark a breaking change with `!` after the type, e.g. `feat!: change submission response format`.
+Mark a breaking change with `!` after the type, e.g. `feat(api)!: change submission response format`.
 
 Keep commits small and clear, so the reviewer can follow the change.
 

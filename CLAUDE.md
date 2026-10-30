@@ -123,10 +123,10 @@ This is the most sensitive part of the system. User-submitted code must never be
 Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch name and in the PR title. `[TTVZ]` and `[Area]` are only used in Jira titles.
 
 - **Branch:** `type/SCRUM-<nr>-short-description` — lowercase, hyphens, e.g. `feat/SCRUM-58-login-with-logto`
-- **Commit:** `type: description` — lowercase, imperative, no trailing period, e.g. `feat: add login button to navbar`
+- **Commit:** `type(scope): description` — lowercase, imperative, no trailing period; the scope is one lowercase word for the part of the project touched (`auth`, `problems`, `execution`, `gamification`, `setup`, `docs`, `ci`, `deps`), e.g. `feat(auth): add login button to navbar`
 - **PR title:** `SCRUM-<nr> Description`, e.g. `SCRUM-58 Implement login with Logto`.
 - **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
-- **Breaking change:** `!` after the type — e.g. `feat!: change submission response format`
+- **Breaking change:** `!` after the type — e.g. `feat(api)!: change submission response format`
 - A PR needs at least one approval before merging; the branch is deleted after the merge.
 - Never push directly to `main`.
 
