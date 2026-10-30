@@ -27,7 +27,7 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 - **Backend:** Java 25, Spring Boot, Maven, Spring Data JPA, PostgreSQL, Actuator, springdoc-openapi (OpenAPI spec for client generation)
 - **Frontend:** React, TypeScript, Vite, TanStack Query, Axios, Tailwind CSS, DaisyUI
 - **API client:** generated automatically with **Orval** from the backend OpenAPI spec (plus Zod schemas)
-- **Auth:** **Logto**, self-hosted in Docker
+- **Auth:** **Logto**, self-hosted in Docker (provider not final; the backend validates standard JWTs)
 - **Database:** PostgreSQL 18
 - **Tooling:** Docker / Docker Compose for everything, **just** as the task runner
 - **Hosting (planned):** Oracle Cloud Free Tier ARM VM, with Cloudflare in front (DNS, proxy, SSL)
@@ -49,7 +49,7 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 ├── .gitignore
 ├── .gitattributes        # forces LF line endings
 ├── .editorconfig         # 4 spaces Java, 2 spaces elsewhere
-├── CONTRIBUTING.md
+├── CONTRIBUTING.md       # team workflow and conventions
 └── README.md
 ```
 
@@ -95,17 +95,17 @@ just dev     # every day: infrastructure + backend + frontend
 | `just db-shell` | psql into the app database |
 | `just db-reset` | **Deletes all local data**, including Logto accounts (asks for confirmation) |
 
-Planned: `just generate-api` (Orval, once the first API endpoint exists), `just prod`.
+Planned: `just gen-api` (regenerates `backend/openapi.json` and the Orval client, once the first API endpoint exists), `just prod`.
 
 ## Code execution and security
 
 This is the most sensitive part of the system. User-submitted code must never be able to affect our infrastructure.
 
-- **"Run" (instant feedback):** Python runs client-side via **Pyodide** (WebAssembly). Never trusted for scoring.
+- **"Run" (instant feedback):** Python runs client-side in the browser (library not final; Pyodide/WebAssembly was the first candidate). Never trusted for scoring.
 - **"Submit" (graded):** runs server-side in an isolated sandbox. **Judge0** (self-hosted) is the leading candidate; final decision pending a research task.
 - Sandbox requirements: separate container, no network access, CPU / memory / time limits, read-only filesystem, unprivileged user, consider gVisor. Rate-limit submissions per user.
 - XP and streaks are awarded **only** from server-side verified results.
-- Hidden test cases never reach the client.
+- There are no hidden tests for now: for every test the user sees where it failed and why. Only the server's verdict awards XP and streaks.
 
 ## Conventions
 
@@ -114,32 +114,30 @@ This is the most sensitive part of the system. User-submitted code must never be
 - One shared Jira project for the whole year; project key is **`SCRUM`** (codes like `SCRUM-58`; numbers are shared across all teams).
 - No epics available. Grouping is done with a title prefix and labels.
 - **Task title:** `[TTVZ][Area] Description` — e.g. `[TTVZ][Auth] Implement login with Logto`
-- **Labels:** always `ttvz` + an area label + a type label.
-  - Areas: `setup`, `auth`, `problems`, `execution`, `security`, `gamification`, `deploy`
-  - Types: `backend`, `frontend`, `devops`, `docs`
+- **Labels:** always `ttvz` + one type label:
+  `backend`, `frontend`, `devops` or `docs`.
 - **Task** = internal technical work. **Story** = user-visible functionality ("As a user, I want… so that…").
 
-### Git (Conventional Commits + Jira key)
+### Git
 
-The Jira code must appear in branches, commits and PR titles so the GitHub ↔ Jira integration links them. `[TTVZ]` and `[Area]` are only used in Jira titles.
+Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch name and in the PR title. `[TTVZ]` and `[Area]` are only used in Jira titles.
 
-- **Branch:** `type/SCRUM-<nr>-short-description` — e.g. `feat/SCRUM-58-login-with-logto`
-- **Commit:** `type(scope): SCRUM-<nr> description` — lowercase, imperative, no trailing period
-  - e.g. `feat(auth): SCRUM-58 add login button to navbar`
-- **PR title:** same format as a commit (it becomes the squash commit message)
+- **Branch:** `type/SCRUM-<nr>-short-description` — lowercase, hyphens, e.g. `feat/SCRUM-58-login-with-logto`
+- **Commit:** `type: description` — lowercase, imperative, no trailing period, e.g. `feat: add login button to navbar`
+- **PR title:** `SCRUM-<nr> Description`, e.g. `SCRUM-58 Implement login with Logto`.
 - **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
-- **Breaking change:** `!` after the type — e.g. `feat(api)!: SCRUM-60 change submission response format`
-- `main` is protected: PR required, at least one approval, **Squash and merge**, delete branch after merge.
+- **Breaking change:** `!` after the type — e.g. `feat!: change submission response format`
+- A PR needs at least one approval before merging; the branch is deleted after the merge.
 - Never push directly to `main`.
 
 ## Rules for Claude Code
 
 - Never commit `.env`, passwords, API keys or tokens. All config goes through environment variables with a matching entry in `.env.example`.
 - Keep files with LF line endings (Windows teammates; `mvnw` breaks with CRLF).
-- Application endpoints live under `/api`; Actuator and OpenAPI stay at the root.
+- API conventions are in `docs/api-conventions.md`; follow them for every endpoint. Application endpoints live under `/api/v1`; Actuator and OpenAPI stay at the root.
 - Do **not** add Spring Security / OAuth2 Resource Server until the auth task: without configuration it locks every endpoint, including the healthcheck.
-- The Orval spec URL is `http://localhost:8080/v3/api-docs` (the backend runs on the host in dev).
-- Never edit the generated API client by hand; change the backend and run `just generate-api`.
+- Orval reads the committed snapshot `backend/openapi.json`. Run `just gen-api` after every API change.
+- Never edit the generated API client by hand; change the backend and run `just gen-api`.
 - Prefer small, focused changes that map to a single Jira task.
 - Anything touching code execution or the sandbox must be reviewed with security in mind; flag risks explicitly.
 - Ask before making architectural decisions that are still open (see below).
@@ -158,7 +156,7 @@ The Jira code must appear in branches, commits and PR titles so the GitHub ↔ J
 1. **Setup** — repo, Docker Compose, justfile, conventions, CI (build, lint, test), Dependabot, CodeQL, secret scanning
 2. **Auth** — Logto integration, JWT validation in Spring Boot, login/logout in React, user profile synced on first login
 3. **Problems** — DB schema (problems, test cases, difficulty, tags), CRUD API, list page with filters, detail page, seed data
-4. **Execution** — code editor (Monaco or CodeMirror), Pyodide "Run", sandboxed "Submit", results display
+4. **Execution** — code editor (Monaco or CodeMirror), in-browser "Run", sandboxed "Submit", results display
 5. **Security** — threat model, sandbox limits, rate limiting, pentesting with malicious payloads
 6. **Gamification** — XP and levels, daily streak (timezone-aware), honeycomb activity grid, leaderboard (post-MVP)
 7. **Deploy** — Oracle Cloud VM, Cloudflare, production Compose with secrets, CD on merge to `main`
@@ -171,3 +169,7 @@ The Jira code must appear in branches, commits and PR titles so the GitHub ↔ J
 - Supported languages at launch (Python only, or also Java / C++ / JavaScript)
 - Judge0 vs. a custom sandbox for server-side execution
 - Code editor: Monaco vs. CodeMirror
+- Auth provider (Logto is the current choice, not final; wanted: easy to run locally, no online account, no SMTP server; username + password login is enough, password reset by an admin is acceptable. Candidates: stay on Logto if it works without email, otherwise Zitadel, Supabase Auth or own Spring auth). The backend must stay provider-agnostic (standard JWT, `authSubject` in `users`).
+- Rate limiting: where and how much (waiting for the infrastructure teammate)
+- Implementation behind the `Grader` interface (Judge0, a Python runner or something else) and the library used for instant in-browser feedback
+- Exact request and response shape of a submission
