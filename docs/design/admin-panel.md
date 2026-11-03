@@ -1,6 +1,6 @@
 # Admin panel design
 
-> **Status:** proposal by the tech lead, to be reviewed with the team (it feeds task B1).
+> **Status:** proposal by the tech lead, to be reviewed with the team (it feeds the database and architecture design).
 
 The admin panel lets an admin run the app **without changing code or redeploying**: problems, hints, users and settings all live in the database.
 

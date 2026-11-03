@@ -30,7 +30,7 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 - **Auth:** **Firebase Authentication** (hosted, free Spark plan); the backend validates standard JWTs and checks issuer and audience
 - **Database:** PostgreSQL 18 (Docker locally; the production host is not decided)
 - **Tooling:** Docker / Docker Compose for local infrastructure, **just** as the task runner
-- **Hosting:** **not decided yet**, free tiers only, no Caddy and no server of our own. Planned model: a static frontend host (with a `/api/*` rewrite to the backend), a Docker host for the backend and the grader, and a hosted PostgreSQL. Task I6 researches the options and task I7 checks the limits.
+- **Hosting:** **not decided yet**, free tiers only, no Caddy and no server of our own. Planned model: a static frontend host (with a `/api/*` rewrite to the backend), a Docker host for the backend and the grader, and a hosted PostgreSQL. The hosting research compares the options and a deployment test checks the limits.
 
 ## Repository layout (target)
 
@@ -38,7 +38,7 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 /
 ├── backend/              # Spring Boot (Maven)
 ├── frontend/             # React + Vite
-├── docs/                 # documentation and design documents (docs/design/)
+├── docs/                 # documentation; docs/overview.md is the start-here document, docs/design/ the design documents
 ├── .github/              # PR template, CI workflows
 ├── scripts/              # setup scripts used by `just setup`
 ├── docker-compose.yml    # dev infrastructure (Postgres)
@@ -168,9 +168,9 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 
 - Final product name and GitHub organization name (SE2 is used as the placeholder name everywhere: DB, Compose project, env vars)
 - Supported languages at launch (Python only, or also Java / C++ / JavaScript)
-- Approval of the Deno + Pyodide grader for server-side execution (proposed in `docs/design/code-execution.md`, needs the security review), or the child-process fallback; whether two free services on the backend host fit is **not verified yet** (spike task I7)
+- Approval of the Deno + Pyodide grader for server-side execution (proposed in `docs/design/code-execution.md`, needs the security review), or the child-process fallback; whether two free services on the backend host fit is **not verified yet** (to be measured in a deployment test)
 - Function-based (`def solve(...)`) or stdin/stdout problems
 - Code editor: Monaco vs. CodeMirror
-- Hosting platforms for the frontend, the backend (and grader) and PostgreSQL, all free (decided after the research I6 and the spike I7)
+- Hosting platforms for the frontend, the backend (and grader) and PostgreSQL, all free (decided after the hosting research and a deployment test)
 - Rate limiting: where and how much (waiting for the infrastructure teammate)
 - Exact request and response shape of a submission

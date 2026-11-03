@@ -8,6 +8,8 @@ The plan for the first big tasks of each teammate, in order. **Jira is the sourc
 
 Task ids (`B1`, `F2`, `I3`, …) exist only in this file, to describe dependencies.
 
+**Before any task, read [overview.md](overview.md)**: it explains what the app does and lists what to read for each task.
+
 ## Order and dependencies
 
 ```mermaid
@@ -87,7 +89,7 @@ The backend starts with design, **before any code**: B1 is reviewed by the whole
 
 This is a starting point in broad strokes, not a closed list. The backend teammate knows best what is needed to start coding with confidence, so add, merge or drop diagrams as you see fit.
 
-**1. What the application does** (a short text)
+**1. What the application does** (a short text; start from [overview.md](overview.md) and improve it where the design needs more)
 - Who uses it: visitor, user, admin.
 - The main use cases, and the MVP flow: log in, pick a problem, write code, submit, see which tests passed and why the others failed, streak and XP update.
 - What is out of scope for now.

@@ -64,7 +64,7 @@ A 30-day streak badge is left out on purpose: nobody can earn it before a demo.
 
 Problems belong to a **topic** and have a **position** inside it, so the list reads like a course: variables and conditions, loops, strings, lists, dictionaries, functions. The list page groups problems by topic. "Mission Complete" and later learning paths build on this.
 
-## What the backend needs (for B1 and B6)
+## What the backend needs
 
 - `problems`: `difficulty`, `topic`, `position`; unlock rules read these.
 - `submissions` and the result per test; "first attempt" is derived from the order of a user's submissions for a problem.
@@ -77,4 +77,4 @@ Problems belong to a **topic** and have a **position** inside it, so the list re
 - Daily XP cap value.
 - Whether Hard problems unlock (and how).
 - Which levels grant a streak freeze after level 3.
-- Names and art: decided by the frontend teammate (task F1).
+- Names and art: decided by the frontend teammate in the UI design.

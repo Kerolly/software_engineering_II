@@ -49,6 +49,8 @@ Users log in, pick a problem, write code, submit it and see exactly **which test
 
 Hints cost stardust: each hint revealed before you solve a problem lowers its XP. Admins add problems, hints and settings from an admin panel, so nothing is hard-coded. See [docs/design/gamification.md](docs/design/gamification.md) and [docs/design/admin-panel.md](docs/design/admin-panel.md).
 
+New to the project? Read [docs/overview.md](docs/overview.md) first.
+
 The MVP flow: **log in → pick a problem → write code → submit → see results → streak and XP update.**
 
 ## Quick start
@@ -198,6 +200,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [docs/api-conventions.md](docs/api-conventions.md) | Rules for every HTTP endpoint, with an example |
 | [CLAUDE.md](CLAUDE.md) | Project context for Claude Code and other AI assistants (stack, commands, security rules, open decisions) |
 | [docs/design/code-execution.md](docs/design/code-execution.md) | How code is run and verified, and how we limit cheating |
+| [docs/overview.md](docs/overview.md) | **Start here for the app itself**: what it does, user and admin journeys, parts of the system, glossary, and what to read for each kind of work |
 | [docs/design/gamification.md](docs/design/gamification.md) | XP, levels, streak, unlocks and badges |
 | [docs/design/admin-panel.md](docs/design/admin-panel.md) | Admin panel: problems, hints, users, settings |
 | [docs/problem-template.md](docs/problem-template.md) | How to write a problem |

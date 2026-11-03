@@ -1,6 +1,6 @@
 # Code execution and anti-cheat
 
-> **Status:** "Run" in the browser is accepted and Judge0 is dropped. The server-side grader below is a **proposal, pending review by the security teammate** (task I1) and the free-tier check (task I7).
+> **Status:** "Run" in the browser is accepted and Judge0 is dropped. The server-side grader below is a **proposal, pending review by the security teammate** and the free-tier check.
 
 The one hard requirement: **XP and streaks are awarded only from results the server verified itself.** We have no server of our own and free managed hosts do not allow privileged containers, so the runner has to work inside those limits.
 
@@ -44,7 +44,7 @@ flowchart LR
 | Trust the browser verdict | Trivially forged from DevTools. Rejected. |
 | Keep the Oracle VM only for Judge0 | Works, but brings back the server we wanted to stop operating. |
 
-**Risks the security review (task I1) must close**
+**Risks the security review must close**
 
 - Pyodide exposes the JavaScript globals to Python (the `js` module). Lock down or remove what Python must not reach, and keep expected outputs out of that scope.
 - Confirm the Deno flags against the version we pin; verify that nothing in the allowed read path is sensitive.
@@ -64,4 +64,4 @@ Even with server-side execution:
 
 1. ~~Hidden or generated tests~~ **Decided: no hidden tests** (see above).
 2. **Problem style:** function-based (`def solve(...)`, easiest to grade safely) or stdin/stdout. Not decided yet; it depends on which problems we write.
-3. **Free-tier fit:** do two services on the free backend host fit its RAM and instance hours? **Not verified.** Task I7 (a hello-world deploy and a Pyodide-in-Deno measurement) answers it; if not, fall back to the child-process option above.
+3. **Free-tier fit:** do two services on the free backend host fit its RAM and instance hours? **Not verified.** A hello-world deploy and a Pyodide-in-Deno measurement answer it; if not, fall back to the child-process option above.

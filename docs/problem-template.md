@@ -1,6 +1,6 @@
 # Problem template
 
-How to write a problem. Copy the example at the end, change it and send it as a pull request. Later, problems are created in the admin panel ([admin-panel.md](design/admin-panel.md)); the database is then the source of truth and these files are just a way to import the first problems. Each problem is one file in `backend/src/main/resources/problems/<slug>.md` (location to be confirmed in task B3, which also decides how files are loaded as seed data).
+How to write a problem. Copy the example at the end, change it and send it as a pull request. Later, problems are created in the admin panel ([admin-panel.md](design/admin-panel.md)); the database is then the source of truth and these files are just a way to import the first problems. Each problem is one file in `backend/src/main/resources/problems/<slug>.md` (location to be confirmed by the backend teammate, who also decides how files are loaded as seed data).
 
 ## Rules for a good problem
 
@@ -61,4 +61,4 @@ def solve(numbers):
 | `[[-2, -4, 3]]` | `-6` | negative even numbers |
 ```
 
-> The format above is a starting point. If the backend teammate prefers JSON or YAML for the seed data, change this document in the same pull request as B3.
+> The format above is a starting point. If the backend teammate prefers JSON or YAML for the seed data, change this document in the same pull request that adds the seed import.
