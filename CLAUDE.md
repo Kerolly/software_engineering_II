@@ -7,7 +7,7 @@ Context for Claude Code. Read this before working on the repository.
 **SE2** (the final product name is not decided yet) is a LeetCode-style learning platform: users solve programming problems in the browser, their code is executed and checked against test cases, and they earn progress through gamification (XP, levels, badges) and a **daily streak**.
 
 - University project for **Software Engineering II**, built by team **TTVZ** (4 people).
-- Mascot / theme: a bee 🐝 — honey as XP, honeycomb (hexagon) activity grid, ranks from larva to queen. Use this theme for gamification-related naming and UI where it fits.
+- Theme: space 🚀 (a working choice; the team decides the final look and names) — stardust as XP, ranks from Cadet to Commander, streak as days in orbit, a star-map activity grid. Use this theme for gamification-related naming and UI where it fits. Audience: Python beginners.
 
 ### Team roles
 
@@ -28,9 +28,9 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 - **Frontend:** React, TypeScript, Vite, TanStack Query, Axios, Tailwind CSS, DaisyUI
 - **API client:** generated automatically with **Orval** from the backend OpenAPI spec (plus Zod schemas)
 - **Auth:** **Firebase Authentication** (hosted, free Spark plan); the backend validates standard JWTs and checks issuer and audience
-- **Database:** PostgreSQL 18 (Docker locally, Neon in production)
+- **Database:** PostgreSQL 18 (Docker locally; the production host is not decided)
 - **Tooling:** Docker / Docker Compose for local infrastructure, **just** as the task runner
-- **Hosting (planned, all free tiers):** Vercel (frontend, with a `/api/*` rewrite to the backend), Render (backend and grader, Docker), Neon (PostgreSQL). No Caddy, no own server.
+- **Hosting:** **not decided yet**, free tiers only, no Caddy and no server of our own. Planned model: a static frontend host (with a `/api/*` rewrite to the backend), a Docker host for the backend and the grader, and a hosted PostgreSQL. Task I6 researches the options and task I7 checks the limits.
 
 ## Repository layout (target)
 
@@ -38,7 +38,7 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 /
 ├── backend/              # Spring Boot (Maven)
 ├── frontend/             # React + Vite
-├── docs/                 # documentation, decisions (docs/decisions/ holds the ADRs)
+├── docs/                 # documentation and design documents (docs/design/)
 ├── .github/              # PR template, CI workflows
 ├── scripts/              # setup scripts used by `just setup`
 ├── docker-compose.yml    # dev infrastructure (Postgres)
@@ -70,7 +70,7 @@ just dev     # every day: PostgreSQL + backend + frontend
 
 ### Docker Compose notes
 
-- `docker-compose.yml` is dev only (Postgres). Production is not Compose: Vercel serves the frontend, Render runs the backend (and the grader) from Dockerfiles, Neon hosts the database.
+- `docker-compose.yml` is dev only (Postgres). Production is not Compose: the planned model is managed hosting (a static frontend host, a Docker host for the backend and the grader, a hosted PostgreSQL); the platforms are not decided yet.
 - The Compose project name is fixed (`se2-dev`), so the dev data volume is `se2-dev_postgres-data`.
 - The backend runs on the host, so `SPRING_DATASOURCE_URL` in `.env` points to `localhost`. `just` loads `.env` automatically (`set dotenv-load`). Configuration comes from `SPRING_DATASOURCE_*` env vars, not from `application.properties`.
 - Firebase settings (`FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*`) come from `.env` and are per Firebase project; the whole team uses the same project.
@@ -98,7 +98,7 @@ Planned: `just gen-api` (regenerates `backend/openapi.json` and the Orval client
 This is the most sensitive part of the system. User-submitted code must never be able to affect our infrastructure.
 
 - **"Run" (instant feedback):** Python runs client-side in the browser with Pyodide (WebAssembly) in a Web Worker. Never trusted for scoring; the client can always forge a result.
-- **"Submit" (graded):** the browser sends the **source code**, never a verdict. The server re-executes it and decides. Proposed implementation (**pending review by the security teammate**, see `docs/decisions/0001-auth-hosting-and-execution.md`): a separate `grader` service running the same Pyodide build in Deno with permissions denied (`--deny-net --deny-env --deny-run --deny-write`), one process per submission, time / heap / output limits, no secrets and no database access, called by the backend through the `Grader` interface. Judge0 is dropped (it needs privileged containers).
+- **"Submit" (graded):** the browser sends the **source code**, never a verdict. The server re-executes it and decides. Proposed implementation (**pending review by the security teammate**, see `docs/design/code-execution.md`): a separate `grader` service running the same Pyodide build in Deno with permissions denied (`--deny-net --deny-env --deny-run --deny-write`), one process per submission, time / heap / output limits, no secrets and no database access, called by the backend through the `Grader` interface. Judge0 is dropped (it needs privileged containers).
 - Expected test outputs must never enter the interpreter that runs user code; compare outside Python.
 - Rate-limit submissions per user. Award XP only on the first solve of a problem and cap XP per day.
 - XP and streaks are awarded **only** from server-side verified results.
@@ -155,8 +155,12 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 3. **Problems** — DB schema (problems, test cases, difficulty, tags), CRUD API, list page with filters, detail page, seed data
 4. **Execution** — code editor (Monaco or CodeMirror), in-browser "Run" (Pyodide), server-verified "Submit" (grader service), results display
 5. **Security** — threat model, grader review and limits, rate limiting, pentesting with malicious payloads
-6. **Gamification** — XP and levels, daily streak (timezone-aware), honeycomb activity grid, leaderboard (post-MVP)
-7. **Deploy** — Vercel, Render and Neon, Dockerfiles for the backend and the grader, secrets per platform, CD on merge to `main`
+6. **Gamification** — XP and levels, daily streak (timezone-aware), star-map activity grid, leaderboard (post-MVP)
+7. **Deploy** — choose the free hosting platforms, Dockerfiles for the backend and the grader, secrets per platform, CD on merge to `main`
+
+**Gamification (proposal, details in `docs/design/gamification.md`):** XP by difficulty on first solve only, 6 levels with space ranks, daily streak with a streak freeze from level 3, 6 badges, Medium problems unlock after 10 Easy solved, cosmetics, problems grouped by topic. Audience: Python beginners. Theme: space (working choice, the team decides).
+
+**Admin panel (proposal, `docs/design/admin-panel.md`):** admins create and publish problems (text, tests, hints, reference solution that must pass before publishing), view, block and unblock users (status checked on every request), preview drafts with an admin-only dry run, and edit settings stored in the database (XP, levels, unlock thresholds, limits). Up to 3 hints per problem; each hint revealed before the first solve lowers that solve's XP. The first admins are created from `ADMIN_BOOTSTRAP_EMAILS` / `ADMIN_BOOTSTRAP_PASSWORD` (forced password change; the backend refuses to start in production with a weak password). Secrets and the grader's hard limits stay in environment variables.
 
 **MVP flow:** log in → pick a problem → write code → submit → see results → streak/XP update.
 
@@ -164,8 +168,9 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 
 - Final product name and GitHub organization name (SE2 is used as the placeholder name everywhere: DB, Compose project, env vars)
 - Supported languages at launch (Python only, or also Java / C++ / JavaScript)
-- Approval of the Deno + Pyodide grader for server-side execution (proposed in ADR 0001, needs the security review), or the child-process fallback; whether two free Render services fit is **not verified yet** (spike task I6)
+- Approval of the Deno + Pyodide grader for server-side execution (proposed in `docs/design/code-execution.md`, needs the security review), or the child-process fallback; whether two free services on the backend host fit is **not verified yet** (spike task I7)
 - Function-based (`def solve(...)`) or stdin/stdout problems
 - Code editor: Monaco vs. CodeMirror
+- Hosting platforms for the frontend, the backend (and grader) and PostgreSQL, all free (decided after the research I6 and the spike I7)
 - Rate limiting: where and how much (waiting for the infrastructure teammate)
 - Exact request and response shape of a submission

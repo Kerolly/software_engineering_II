@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      // The backend serves its API under /api (in production a Vercel rewrite in vercel.json does the same).
+      // The backend serves its API under /api (in production a rewrite rule of the frontend host does the same).
       '/api': 'http://localhost:8080',
     },
   },

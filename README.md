@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🐝 SE2
+# 🚀 SE2
 
-**Learn to code by solving problems, earn honey, keep your streak alive.**
+**Learn Python by solving missions, earn stardust, keep your orbit alive.**
 
-A LeetCode-style learning platform: solve programming problems in the browser, get instant feedback on every test, and level up from larva to queen.
+A LeetCode-style learning platform for **Python beginners**: solve programming problems in the browser, get instant feedback on every test, and rise from Cadet to Commander.
 
 ![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4-6DB33F?logo=springboot&logoColor=white)
@@ -35,14 +35,19 @@ University project for **Software Engineering II**, built by team **TTVZ**.
 
 ## What is it
 
-Users log in, pick a problem, write code, submit it and see exactly **which tests passed and why the others failed**. Progress is rewarded with gamification, themed around a bee:
+Users log in, pick a problem, write code, submit it and see exactly **which tests passed and why the others failed**. Progress is rewarded with gamification, themed around space (a working theme: the team decides the final look and names):
 
 | Mechanic | Theme |
 | --- | --- |
-| XP | Honey 🍯 |
-| Activity | A honeycomb (hexagon) grid |
-| Levels | From larva to queen |
-| Daily streak | Keep the hive buzzing |
+| Problems | Missions, grouped in sectors (topics) |
+| XP | Stardust ✨ |
+| Levels | Cadet, Pilot, Navigator, Engineer, Captain, Commander |
+| Daily streak | Days in orbit 🛰️ |
+| Activity | A star map: one star per day, brighter when you solve more |
+| Badges | Six mission patches, from *First Launch* to *Mission Complete* |
+| Unlocks | Medium problems open after 10 Easy ones, a streak freeze at level 3, ship and profile cosmetics |
+
+Hints cost stardust: each hint revealed before you solve a problem lowers its XP. Admins add problems, hints and settings from an admin panel, so nothing is hard-coded. See [docs/design/gamification.md](docs/design/gamification.md) and [docs/design/admin-panel.md](docs/design/admin-panel.md).
 
 The MVP flow: **log in → pick a problem → write code → submit → see results → streak and XP update.**
 
@@ -137,8 +142,8 @@ flowchart LR
 ```
 
 - The frontend and backend run on your machine; PostgreSQL runs in Docker. Authentication is a hosted service (Firebase), so nothing else runs locally.
-- The browser only ever talks to one origin. In dev the Vite proxy forwards `/api` to the backend, and in production a `/api/*` rewrite in `vercel.json` will do the same.
-- Authentication with Firebase is planned. "Run" executes Python in the browser (Pyodide) for instant feedback; "Submit" will be re-executed and judged by the server, see [docs/decisions/0001](docs/decisions/0001-auth-hosting-and-execution.md).
+- The browser only ever talks to one origin. In dev the Vite proxy forwards `/api` to the backend, and in production the hosting platform will do the same (a rewrite rule; the platform is not decided yet).
+- Authentication with Firebase is planned. "Run" executes Python in the browser (Pyodide) for instant feedback; "Submit" will be re-executed and judged by the server, see [docs/design/code-execution.md](docs/design/code-execution.md).
 
 ## Tech stack
 
@@ -150,14 +155,14 @@ flowchart LR
 | Auth | Firebase Authentication (the backend validates standard JWTs) |
 | Database | PostgreSQL 18 |
 | Tooling | Docker Compose, just, GitHub Actions |
-| Hosting (planned) | Vercel (frontend), Render (backend), Neon (PostgreSQL), all on free tiers |
+| Hosting | **Not decided yet**, free tiers only (a static frontend host, a Docker host for the backend and PostgreSQL as a hosted service) |
 
 ## Repository layout
 
 ```text
 backend/              Spring Boot API (Maven)
 frontend/             React + Vite app
-docs/                 Documentation and decisions
+docs/                 Documentation and design documents
 scripts/              Setup scripts used by `just setup`
 .github/              PR template and CI workflow
 docker-compose.yml    Development services: PostgreSQL
@@ -192,7 +197,10 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Team workflow, Jira, branch, commit and pull request rules |
 | [docs/api-conventions.md](docs/api-conventions.md) | Rules for every HTTP endpoint, with an example |
 | [CLAUDE.md](CLAUDE.md) | Project context for Claude Code and other AI assistants (stack, commands, security rules, open decisions) |
-| [docs/decisions/](docs/decisions/0001-auth-hosting-and-execution.md) | Architecture decisions (auth, hosting, code execution) and their status |
+| [docs/design/code-execution.md](docs/design/code-execution.md) | How code is run and verified, and how we limit cheating |
+| [docs/design/gamification.md](docs/design/gamification.md) | XP, levels, streak, unlocks and badges |
+| [docs/design/admin-panel.md](docs/design/admin-panel.md) | Admin panel: problems, hints, users, settings |
+| [docs/problem-template.md](docs/problem-template.md) | How to write a problem |
 | [docs/roadmap.md](docs/roadmap.md) | The first big tasks of each teammate, in order, with dependencies |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | The checklist every pull request starts with |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Continuous integration: backend, frontend and naming checks |
