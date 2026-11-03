@@ -13,10 +13,10 @@ Context for Claude Code. Read this before working on the repository.
 
 | Role | Responsibilities |
 | --- | --- |
-| Lead / generalist | Project setup, Jira & GitHub, helps everywhere |
+| Tech lead / PM | Project setup, Jira & GitHub, assigns tasks to the team and unblocks teammates, helps everywhere |
 | Backend | Spring Boot API, database, business logic |
 | Frontend | React app, UI, API client |
-| Cybersecurity / DevSecOps | Code-execution sandbox security, CI/CD, hardening, deployment |
+| Cybersecurity / DevSecOps | Code-execution security (grader review), CI/CD, hardening, deployment |
 
 ### Communication
 
@@ -27,10 +27,10 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 - **Backend:** Java 25, Spring Boot, Maven, Spring Data JPA, PostgreSQL, Actuator, springdoc-openapi (OpenAPI spec for client generation)
 - **Frontend:** React, TypeScript, Vite, TanStack Query, Axios, Tailwind CSS, DaisyUI
 - **API client:** generated automatically with **Orval** from the backend OpenAPI spec (plus Zod schemas)
-- **Auth:** **Logto**, self-hosted in Docker (provider not final; the backend validates standard JWTs)
-- **Database:** PostgreSQL 18
-- **Tooling:** Docker / Docker Compose for everything, **just** as the task runner
-- **Hosting (planned):** Oracle Cloud Free Tier ARM VM, with Cloudflare in front (DNS, proxy, SSL)
+- **Auth:** **Firebase Authentication** (hosted, free Spark plan); the backend validates standard JWTs and checks issuer and audience
+- **Database:** PostgreSQL 18 (Docker locally, Neon in production)
+- **Tooling:** Docker / Docker Compose for local infrastructure, **just** as the task runner
+- **Hosting (planned, all free tiers):** Vercel (frontend, with a `/api/*` rewrite to the backend), Render (backend and grader, Docker), Neon (PostgreSQL). No Caddy, no own server.
 
 ## Repository layout (target)
 
@@ -38,12 +38,10 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 /
 ├── backend/              # Spring Boot (Maven)
 ├── frontend/             # React + Vite
-├── infra/
-│   └── postgres/init/    # SQL run on first DB start (creates the `logto` database)
-├── docs/                 # documentation, decisions
+├── docs/                 # documentation, decisions (docs/decisions/ holds the ADRs)
 ├── .github/              # PR template, CI workflows
 ├── scripts/              # setup scripts used by `just setup`
-├── docker-compose.yml    # dev infrastructure (Postgres + Logto)
+├── docker-compose.yml    # dev infrastructure (Postgres)
 ├── justfile
 ├── .env.example          # committed; copy to .env locally (never commit .env)
 ├── .gitignore
@@ -55,11 +53,11 @@ The developer prefers **Romanian** in chat. Everything in the repository — cod
 
 ## Local development
 
-Hybrid setup: **PostgreSQL and Logto run in Docker, the backend and the frontend run on the host** (fast hot reload, real debugger). This needs **JDK 25**, **Node 22+** and **Docker** installed.
+Hybrid setup: **PostgreSQL runs in Docker, the backend and the frontend run on the host** (fast hot reload, real debugger). This needs **JDK 25**, **Node 22+** and **Docker** installed.
 
 ```bash
 just setup   # once: checks/installs JDK and Node, creates .env, downloads dependencies, warns if Docker is missing
-just dev     # every day: infrastructure + backend + frontend
+just dev     # every day: PostgreSQL + backend + frontend
 ```
 
 `just setup` is idempotent. If it installs a tool, open a new terminal and run it again. It never installs Docker (install it yourself); it only checks it at the end.
@@ -68,16 +66,14 @@ just dev     # every day: infrastructure + backend + frontend
 | --- | --- | --- |
 | Frontend | http://localhost:5173 | Vite dev server with HMR; `/api` is proxied to the backend |
 | Backend | http://localhost:8080 | Health: `/actuator/health`, OpenAPI: `/v3/api-docs` |
-| Logto | http://localhost:3001 | Auth endpoint |
-| Logto Admin | http://localhost:3002 | Admin console |
-| Postgres | localhost:5432 | DB `se2`; Logto uses a separate DB `logto` on the same server |
+| Postgres | localhost:5432 | DB `se2` |
 
 ### Docker Compose notes
 
-- `docker-compose.yml` is dev only (Postgres + Logto). The production-like stack is `docker-compose.prod.yml` (planned, with Caddy serving the frontend and proxying `/api`).
-- Compose project names are fixed (`se2-dev` for dev, `se2-prod` for prod), so the dev data volume is `se2-dev_postgres-data`.
+- `docker-compose.yml` is dev only (Postgres). Production is not Compose: Vercel serves the frontend, Render runs the backend (and the grader) from Dockerfiles, Neon hosts the database.
+- The Compose project name is fixed (`se2-dev`), so the dev data volume is `se2-dev_postgres-data`.
 - The backend runs on the host, so `SPRING_DATASOURCE_URL` in `.env` points to `localhost`. `just` loads `.env` automatically (`set dotenv-load`). Configuration comes from `SPRING_DATASOURCE_*` env vars, not from `application.properties`.
-- Logto runs `npm run cli db seed -- --swe && npm start` (seeds only if needed). `LOGTO_VERSION` is pinned to a concrete tag in `.env`.
+- Firebase settings (`FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*`) come from `.env` and are per Firebase project; the whole team uses the same project.
 
 ### just commands
 
@@ -86,26 +82,27 @@ just dev     # every day: infrastructure + backend + frontend
 | `just` | List all commands |
 | `just setup` | Install and check everything needed for development |
 | `just dev` | Start infrastructure, backend and frontend (Ctrl+C stops the apps) |
-| `just infra` / `just down` | Start / stop only PostgreSQL and Logto |
+| `just infra` / `just down` | Start / stop only PostgreSQL |
 | `just dev-backend` / `just dev-frontend` | Run one app on the host |
 | `just test` | Run all tests (`test-backend` also starts PostgreSQL; `test-frontend` runs Vitest) |
 | `just up` / `just restart [service]` | `up` is an alias of `infra`; restart the Docker services |
 | `just logs [service]` | Follow logs of the Docker services |
 | `just ps` | Container status |
 | `just db-shell` | psql into the app database |
-| `just db-reset` | **Deletes all local data**, including Logto accounts (asks for confirmation) |
+| `just db-reset` | **Deletes all local data** in the local database (asks for confirmation) |
 
-Planned: `just gen-api` (regenerates `backend/openapi.json` and the Orval client, once the first API endpoint exists), `just prod`.
+Planned: `just gen-api` (regenerates `backend/openapi.json` and the Orval client, once the first API endpoint exists).
 
 ## Code execution and security
 
 This is the most sensitive part of the system. User-submitted code must never be able to affect our infrastructure.
 
-- **"Run" (instant feedback):** Python runs client-side in the browser (library not final; Pyodide/WebAssembly was the first candidate). Never trusted for scoring.
-- **"Submit" (graded):** runs server-side in an isolated sandbox. **Judge0** (self-hosted) is the leading candidate; final decision pending a research task.
-- Sandbox requirements: separate container, no network access, CPU / memory / time limits, read-only filesystem, unprivileged user, consider gVisor. Rate-limit submissions per user.
+- **"Run" (instant feedback):** Python runs client-side in the browser with Pyodide (WebAssembly) in a Web Worker. Never trusted for scoring; the client can always forge a result.
+- **"Submit" (graded):** the browser sends the **source code**, never a verdict. The server re-executes it and decides. Proposed implementation (**pending review by the security teammate**, see `docs/decisions/0001-auth-hosting-and-execution.md`): a separate `grader` service running the same Pyodide build in Deno with permissions denied (`--deny-net --deny-env --deny-run --deny-write`), one process per submission, time / heap / output limits, no secrets and no database access, called by the backend through the `Grader` interface. Judge0 is dropped (it needs privileged containers).
+- Expected test outputs must never enter the interpreter that runs user code; compare outside Python.
+- Rate-limit submissions per user. Award XP only on the first solve of a problem and cap XP per day.
 - XP and streaks are awarded **only** from server-side verified results.
-- There are no hidden tests for now: for every test the user sees where it failed and why. Only the server's verdict awards XP and streaks.
+- There are no hidden tests for now: for every test the user sees where it failed and why. Decided: no hidden tests. The known limitation is that a user can hard-code the expected outputs; it is accepted and limited by awarding XP only on the first solve and capping XP per day.
 
 ## Conventions
 
@@ -113,7 +110,7 @@ This is the most sensitive part of the system. User-submitted code must never be
 
 - One shared Jira project for the whole year; project key is **`SCRUM`** (codes like `SCRUM-58`; numbers are shared across all teams).
 - No epics available. Grouping is done with a title prefix and labels.
-- **Task title:** `[TTVZ][Area] Description` — e.g. `[TTVZ][Auth] Implement login with Logto`
+- **Task title:** `[TTVZ][Area] Description` — e.g. `[TTVZ][Auth] Implement login with Firebase`
 - **Labels:** always `ttvz` + one type label:
   `backend`, `frontend`, `devops` or `docs`.
 - **Task** = internal technical work. **Story** = user-visible functionality ("As a user, I want… so that…").
@@ -122,9 +119,9 @@ This is the most sensitive part of the system. User-submitted code must never be
 
 Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch name and in the PR title. `[TTVZ]` and `[Area]` are only used in Jira titles.
 
-- **Branch:** `type/SCRUM-<nr>-short-description` — lowercase, hyphens, e.g. `feat/SCRUM-58-login-with-logto`
+- **Branch:** `type/SCRUM-<nr>-short-description` — lowercase, hyphens, e.g. `feat/SCRUM-58-login-with-firebase`
 - **Commit:** `type(scope): description` — lowercase, imperative, no trailing period; the scope is one lowercase word for the part of the project touched (`auth`, `problems`, `execution`, `gamification`, `setup`, `docs`, `ci`, `deps`), e.g. `feat(auth): add login button to navbar`
-- **PR title:** `SCRUM-<nr> Description`, e.g. `SCRUM-58 Implement login with Logto`.
+- **PR title:** `SCRUM-<nr> Description`, e.g. `SCRUM-58 Implement login with Firebase`.
 - **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 - **Breaking change:** `!` after the type — e.g. `feat(api)!: change submission response format`
 - A PR needs at least one approval before merging; the branch is deleted after the merge.
@@ -139,7 +136,7 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 - Orval reads the committed snapshot `backend/openapi.json`. Run `just gen-api` after every API change.
 - Never edit the generated API client by hand; change the backend and run `just gen-api`.
 - Prefer small, focused changes that map to a single Jira task.
-- Anything touching code execution or the sandbox must be reviewed with security in mind; flag risks explicitly.
+- Anything touching code execution or the grader must be reviewed with security in mind; flag risks explicitly.
 - Ask before making architectural decisions that are still open (see below).
 
 ## Current status
@@ -154,12 +151,12 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 ## Roadmap (areas)
 
 1. **Setup** — repo, Docker Compose, justfile, conventions, CI (build, lint, test), Dependabot, CodeQL, secret scanning
-2. **Auth** — Logto integration, JWT validation in Spring Boot, login/logout in React, user profile synced on first login
+2. **Auth** — Firebase integration, JWT validation (issuer and audience) in Spring Boot, login/logout in React, user profile synced on first login
 3. **Problems** — DB schema (problems, test cases, difficulty, tags), CRUD API, list page with filters, detail page, seed data
-4. **Execution** — code editor (Monaco or CodeMirror), in-browser "Run", sandboxed "Submit", results display
-5. **Security** — threat model, sandbox limits, rate limiting, pentesting with malicious payloads
+4. **Execution** — code editor (Monaco or CodeMirror), in-browser "Run" (Pyodide), server-verified "Submit" (grader service), results display
+5. **Security** — threat model, grader review and limits, rate limiting, pentesting with malicious payloads
 6. **Gamification** — XP and levels, daily streak (timezone-aware), honeycomb activity grid, leaderboard (post-MVP)
-7. **Deploy** — Oracle Cloud VM, Cloudflare, production Compose with secrets, CD on merge to `main`
+7. **Deploy** — Vercel, Render and Neon, Dockerfiles for the backend and the grader, secrets per platform, CD on merge to `main`
 
 **MVP flow:** log in → pick a problem → write code → submit → see results → streak/XP update.
 
@@ -167,9 +164,8 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 
 - Final product name and GitHub organization name (SE2 is used as the placeholder name everywhere: DB, Compose project, env vars)
 - Supported languages at launch (Python only, or also Java / C++ / JavaScript)
-- Judge0 vs. a custom sandbox for server-side execution
+- Approval of the Deno + Pyodide grader for server-side execution (proposed in ADR 0001, needs the security review), or the child-process fallback; whether two free Render services fit is **not verified yet** (spike task I6)
+- Function-based (`def solve(...)`) or stdin/stdout problems
 - Code editor: Monaco vs. CodeMirror
-- Auth provider (Logto is the current choice, not final; wanted: easy to run locally, no online account, no SMTP server; username + password login is enough, password reset by an admin is acceptable. Candidates: stay on Logto if it works without email, otherwise Zitadel, Supabase Auth or own Spring auth). The backend must stay provider-agnostic (standard JWT, `authSubject` in `users`).
 - Rate limiting: where and how much (waiting for the infrastructure teammate)
-- Implementation behind the `Grader` interface (Judge0, a Python runner or something else) and the library used for instant in-browser feedback
 - Exact request and response shape of a submission

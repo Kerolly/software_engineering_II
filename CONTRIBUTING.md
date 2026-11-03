@@ -7,7 +7,7 @@ To set up your machine, see [Running locally](README.md#running-locally) (`just 
 ## Workflow
 
 1. Pick a task in Jira and move it to *In Progress*. Note its code, e.g. `SCRUM-58`.
-2. Create a branch from an up-to-date `main`: `git switch main && git pull && git switch -c feat/SCRUM-58-login-with-logto`.
+2. Create a branch from an up-to-date `main`: `git switch main && git pull && git switch -c feat/SCRUM-58-login-with-firebase`.
 3. Work in small steps and commit often.
 4. Push the branch and open a pull request. The template is filled in for you.
 5. Get at least one approval from a teammate. Fix review comments with new commits.
@@ -18,7 +18,7 @@ Never push directly to `main`. One pull request maps to one Jira task; keep it s
 ## Jira
 
 - One shared Jira project for the whole year; the key is `SCRUM` and numbers are shared across all teams.
-- **Task title:** `[TTVZ][Area] Description`, e.g. `[TTVZ][Auth] Implement login with Logto`.
+- **Task title:** `[TTVZ][Area] Description`, e.g. `[TTVZ][Auth] Implement login with Firebase`.
 - **Labels:** always `ttvz` + one type label:
   `backend`, `frontend`, `devops` or `docs`.
 - **Task** is internal technical work. **Story** is user-visible functionality ("As a user, I want… so that…").
@@ -29,7 +29,7 @@ Never push directly to `main`. One pull request maps to one Jira task; keep it s
 Format: `type/SCRUM-<nr>-short-description`. Lowercase, words separated by hyphens.
 
 ```text
-feat/SCRUM-58-login-with-logto
+feat/SCRUM-58-login-with-firebase
 fix/SCRUM-61-streak-timezone
 docs/SCRUM-8-contributing-guide
 ```
@@ -52,13 +52,13 @@ Keep commits small and clear, so the reviewer can follow the change.
 
 ## Pull requests
 
-Title format: `SCRUM-<nr> Description`, e.g. `SCRUM-58 Implement login with Logto`.
+Title format: `SCRUM-<nr> Description`, e.g. `SCRUM-58 Implement login with Firebase`.
 
 The title must contain the Jira code. Write it clearly; it is what the team sees in the list of pull requests.
 
 - Fill in the template: what changed, why, how to test.
 - At least one approval is required before merging.
-- Anything that touches code execution or the sandbox needs a security-minded review. Flag the risks in the description.
+- Anything that touches code execution or the grader needs a security-minded review. Flag the risks in the description.
 
 ## Code rules
 

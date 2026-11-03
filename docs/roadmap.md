@@ -24,24 +24,22 @@ flowchart LR
     B4 --> F5[F5 Login and profile]
 
     I1[I1 Threat model<br/>+ runner choice] --> B5
-    I1 --> I2[I2 Sandbox]
+    I1 --> I2[I2 Grader service]
+    I6[I6 Free-tier spike] --> I1
+    I6 --> I2
     I4[I4 Production Docker] --> I5[I5 Server and deploy]
-
-    AUTH{{Decide the<br/>auth provider}} --> B4
-    AUTH --> F5
 
     F1[F1 Design in Figma]
     I3[I3 Harden CI]
 ```
 
-Can start right away, in parallel: **B1, F1, I1, I3, I4**. Everything else waits for what points to it.
+Can start right away, in parallel: **B1, F1, I3, I4, I6**; I1 starts together with I6 and is finished with its result. Everything else waits for what points to it.
 
 ## Decisions that block tasks
 
 | Decision | Blocks | Who prepares it |
 | --- | --- | --- |
-| Auth provider (Logto is the current choice; wanted: no online account, no SMTP) | B4, F5 | Backend and infra, with the lead |
-| Code runner: Judge0, a Python runner or something else; library for in-browser feedback | B5, I2, F4 | Infra (task I1) |
+| Code runner: the Deno + Pyodide grader proposed in [decisions/0001](decisions/0001-auth-hosting-and-execution.md) needs the security review and the free-tier check (I6); also function-based or stdin/stdout problems | B5, I2, F4 | Infra (task I1), with the backend |
 | Rate limiting: where and how much | B5 | Infra (task I1) |
 | Code editor: Monaco or CodeMirror | F4 | Frontend |
 | Provisional items in [api-conventions.md](api-conventions.md): DTOs, packages by feature | B2 | Backend (task B1) |
@@ -55,7 +53,7 @@ The backend starts with design, **before any code**: B1 is reviewed by the whole
 | B1 | `[TTVZ][Setup] Design the data model and core flows` | `ttvz`, `backend`, `docs` | Documents in `docs/design/`, with diagrams written in Mermaid (rendered by GitHub, reviewable in a pull request). The checklist below is a starting point; add whatever else you think the team needs. |
 | B2 | `[TTVZ][Setup] Build the API foundation` | `ttvz`, `backend` | `/api/v1` prefix configured in one place, global `ProblemDetail` handler, springdoc setup (tags and `operationId`), the convention test, `backend/openapi.json` and `just gen-api`. Confirms the provisional points of the API conventions. Unblocks the frontend client. |
 | B3 | `[TTVZ][Problems] Implement problems domain and API` | `ttvz`, `backend` | Flyway schema from the approved design, list and detail endpoints with pagination, filters and sorting, seed data. Problem administration (`/admin/problems`) comes after authentication. |
-| B4 | `[TTVZ][Auth] Validate JWT and sync users` | `ttvz`, `backend` | Resource server, `users` table with `authSubject`, roles `USER` and `ADMIN`, `/me`, guard for `/admin/**`. Waits for the auth provider decision. |
+| B4 | `[TTVZ][Auth] Validate JWT and sync users` | `ttvz`, `backend` | Resource server, `users` table with `authSubject`, roles `USER` and `ADMIN`, `/me`, guard for `/admin/**`. The provider is Firebase (see [decisions/0001](decisions/0001-auth-hosting-and-execution.md)): validate the issuer and the audience. |
 | B5 | `[TTVZ][Execution] Implement submissions API` | `ttvz`, `backend` | `POST /submissions` returning `202`, polling on `GET /submissions/{id}`, a result per test (where and why it failed), the internal `Grader` interface. Waits for I1. |
 | B6 | `[TTVZ][Gamification] Implement XP, levels and daily streak` | `ttvz`, `backend` | XP and levels awarded only from server verdicts, daily streak that respects the user's time zone. |
 
@@ -102,20 +100,21 @@ The frontend teammate owns the visual design and picks the tool they work best i
 | F2 | `[TTVZ][Setup] Build the app shell and API client` | `ttvz`, `frontend` | Routing, layout, navbar, DaisyUI theme from F1, TanStack Query and Axios, display of `ProblemDetail` errors, Orval (after B2). |
 | F3 | `[TTVZ][Problems] Build problem list and detail pages` | `ttvz`, `frontend` | List with filters and pagination, problem page with the statement in Markdown. Can start with mocked data before B3. |
 | F4 | `[TTVZ][Execution] Build code editor and results view` | `ttvz`, `frontend` | Editor (Monaco or CodeMirror), "Run" in the browser, "Submit" with polling, and a view of every test showing where and why it failed. |
-| F5 | `[TTVZ][Auth] Build login flow and profile with streak grid` | `ttvz`, `frontend` | Login and logout, profile page with XP, level, streak and the honeycomb activity grid. Waits for the auth provider decision and B4. |
+| F5 | `[TTVZ][Auth] Build login flow and profile with streak grid` | `ttvz`, `frontend` | Login and logout, profile page with XP, level, streak and the honeycomb activity grid. Firebase JS SDK for login, ID token sent to the API. Waits for B4. |
 
 ## Infrastructure and DevSecOps
 
 | Id | Jira title | Labels | Scope |
 | --- | --- | --- | --- |
-| I1 | `[TTVZ][Security] Write threat model and choose the code runner` | `ttvz`, `devops`, `docs` | Threat model for running user code, the choice between Judge0 and other runners, sandbox requirements, a proposal for rate limiting. The result goes in `docs/`. First in the queue: B5 and I2 depend on it. |
-| I2 | `[TTVZ][Execution] Implement the code execution sandbox` | `ttvz`, `devops` | The chosen sandbox: separate container, no network, CPU, memory and time limits, read-only filesystem, unprivileged user, and the contract with `Grader`. |
+| I1 | `[TTVZ][Security] Write threat model and review the code runner` | `ttvz`, `devops`, `docs` | Threat model for running user code and a review of the proposed Deno + Pyodide grader (the risks are listed in [decisions/0001](decisions/0001-auth-hosting-and-execution.md)), a proposal for rate limiting. The result goes in `docs/`. First in the queue: B5 and I2 depend on it. |
+| I2 | `[TTVZ][Execution] Implement the grader service` | `ttvz`, `devops` | The approved grader: a separate Docker service (Deno + Pyodide) with denied permissions, one process per submission, time, heap and output limits, no secrets, a shared secret with the backend, and the contract with `Grader`. |
 | I3 | `[TTVZ][Setup] Harden CI and repository security` | `ttvz`, `devops` | Branch protection on `main` with the `CI` check required, Dependabot, CodeQL, secret scanning, image scanning, CI caching. |
-| I4 | `[TTVZ][Deploy] Create the production Docker setup` | `ttvz`, `devops` | Multi-stage Dockerfiles for backend and frontend, `docker-compose.prod.yml` with Caddy (serves the frontend and proxies `/api`), secrets, `just prod`. |
-| I5 | `[TTVZ][Deploy] Provision the server and set up deployment` | `ttvz`, `devops` | Oracle Cloud ARM VM, hardening (SSH, firewall), Cloudflare (DNS, proxy, SSL), automatic deploy on merge to `main`, PostgreSQL backups. |
+| I4 | `[TTVZ][Deploy] Prepare the deployment files` | `ttvz`, `devops` | Multi-stage Dockerfiles for the backend and the grader (for Render), `frontend/vercel.json` with the `/api/*` rewrite to the backend, environment variables documented in `.env.example`. |
+| I5 | `[TTVZ][Deploy] Set up hosting and automatic deployment` | `ttvz`, `devops` | Vercel (frontend), Render (backend and grader), Neon (PostgreSQL) and the Firebase project, secrets in each platform, deploy on merge to `main`, a check of the free-tier limits. |
+| I6 | `[TTVZ][Deploy] Verify free-tier limits with a spike` | `ttvz`, `devops` | A short experiment, result in `docs/`: deploy a hello-world backend and a hello-world Deno + Pyodide service on Render; measure RAM, cold start and the time to run a trivial Python test; check the free instance hours for two services, Neon limits and Vercel Hobby terms. Answers whether two Render services fit or the child-process fallback is needed. |
 
 ## Later
 
-- Testing the sandbox with malicious payloads (after I2).
+- Testing the grader with malicious payloads (after I2).
 - Leaderboard (after the MVP).
 - Support for more languages than Python.

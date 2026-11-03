@@ -56,7 +56,7 @@ You need three things before anything else; `just setup` takes care of the rest.
 | --- | --- | --- |
 | [Git](https://git-scm.com) | clone and contribute | your package manager or the website |
 | [just](https://github.com/casey/just#installation) | the command runner used everywhere in this repo | Windows: `winget install Casey.Just`<br>macOS: `brew install just`<br>Debian/Ubuntu: `sudo apt install just`<br>Fedora: `sudo dnf install just` |
-| [Docker](https://www.docker.com/products/docker-desktop/) | runs PostgreSQL and Logto | Docker Desktop (Windows, macOS) or Docker Engine (Linux). **Install it yourself**, `just setup` only checks it |
+| [Docker](https://www.docker.com/products/docker-desktop/) | runs PostgreSQL locally | Docker Desktop (Windows, macOS) or Docker Engine (Linux). **Install it yourself**, `just setup` only checks it |
 
 Open a **new terminal** after installing, so the new commands are found.
 
@@ -85,15 +85,13 @@ Start Docker, then:
 just dev
 ```
 
-This starts PostgreSQL and Logto in Docker, then the backend and the frontend directly on your machine, so you get instant hot reload.
+This starts PostgreSQL in Docker, then the backend and the frontend directly on your machine, so you get instant hot reload.
 
 | Service | URL | Notes |
 | --- | --- | --- |
 | Frontend | http://localhost:5173 | Vite dev server; `/api` is proxied to the backend |
 | Backend | http://localhost:8080 | Health: `/actuator/health`, OpenAPI: `/v3/api-docs` |
-| Logto | http://localhost:3001 | Auth endpoint |
-| Logto Admin | http://localhost:3002 | Admin console |
-| PostgreSQL | `localhost:5432` | Database `se2` (Logto uses its own database, `logto`) |
+| PostgreSQL | `localhost:5432` | Database `se2` |
 
 `Ctrl+C` stops the backend and the frontend. The Docker services keep running; stop them with `just down`.
 
@@ -105,7 +103,7 @@ Run `just` with no arguments to list every command. The ones you will use most:
 | --- | --- |
 | `just dev` | Start Docker services, backend and frontend |
 | `just dev-backend` / `just dev-frontend` | Run only one of the apps on your machine |
-| `just infra` (alias `just up`) | Start only PostgreSQL and Logto |
+| `just infra` (alias `just up`) | Start only PostgreSQL |
 | `just down` | Stop the Docker services |
 | `just restart [service]` | Restart the Docker services, or just one |
 | `just logs [service]` | Follow the logs of the Docker services |
@@ -125,8 +123,9 @@ flowchart LR
     B[Browser] -->|5173| F[Frontend<br/>Vite + React]
     F -->|/api proxy| A[Backend<br/>Spring Boot :8080]
     A --> P[(PostgreSQL :5432)]
-    L[Logto :3001<br/>auth, planned] --> P
-    A -.->|validates JWT| L
+    FB[Firebase Auth<br/>hosted, planned]
+    B -.->|login, gets ID token| FB
+    A -.->|validates JWT| FB
 
     subgraph host["Your machine"]
       F
@@ -134,13 +133,12 @@ flowchart LR
     end
     subgraph docker["Docker"]
       P
-      L
     end
 ```
 
-- The frontend and backend run on your machine; PostgreSQL and Logto run in Docker.
-- The browser only ever talks to one origin. In dev the Vite proxy forwards `/api` to the backend, and in production Caddy will do the same.
-- Authentication with Logto is planned; the provider is not final yet.
+- The frontend and backend run on your machine; PostgreSQL runs in Docker. Authentication is a hosted service (Firebase), so nothing else runs locally.
+- The browser only ever talks to one origin. In dev the Vite proxy forwards `/api` to the backend, and in production a `/api/*` rewrite in `vercel.json` will do the same.
+- Authentication with Firebase is planned. "Run" executes Python in the browser (Pyodide) for instant feedback; "Submit" will be re-executed and judged by the server, see [docs/decisions/0001](docs/decisions/0001-auth-hosting-and-execution.md).
 
 ## Tech stack
 
@@ -149,21 +147,20 @@ flowchart LR
 | Backend | Java 25, Spring Boot, Maven, Spring Data JPA, Flyway, springdoc-openapi |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, DaisyUI, Vitest (TanStack Query, Axios, Orval and Zod come with the first endpoints) |
 | API client | Generated with Orval from `backend/openapi.json` |
-| Auth | Logto, self-hosted (provider not final) |
+| Auth | Firebase Authentication (the backend validates standard JWTs) |
 | Database | PostgreSQL 18 |
 | Tooling | Docker Compose, just, GitHub Actions |
-| Hosting (planned) | Oracle Cloud Free Tier VM, with Caddy and Cloudflare in front |
+| Hosting (planned) | Vercel (frontend), Render (backend), Neon (PostgreSQL), all on free tiers |
 
 ## Repository layout
 
 ```text
 backend/              Spring Boot API (Maven)
 frontend/             React + Vite app
-infra/postgres/init/  SQL run on first database start
 docs/                 Documentation and decisions
 scripts/              Setup scripts used by `just setup`
 .github/              PR template and CI workflow
-docker-compose.yml    Development services: PostgreSQL and Logto
+docker-compose.yml    Development services: PostgreSQL
 justfile              All project commands
 .env.example          Template for your local .env
 ```
@@ -186,8 +183,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | Backend cannot connect to the database | Run `just ps` and wait for `postgres` to be `healthy`. Check that `.env` matches `.env.example`. |
 | Wrong Java version | Run `java -version` and check your `JAVA_HOME`. The backend needs JDK 25; an older JDK earlier in `PATH` or in `JAVA_HOME` wins. |
 | `Permission denied` on `mvnw` or `setup.sh` (macOS/Linux) | Run `chmod +x backend/mvnw scripts/setup.sh`. |
-| First visit to http://localhost:3002 asks for an account | Logto runs locally, so you create your own admin account the first time. It exists only on your machine. |
-| Something is badly broken locally | `just db-reset` deletes all local data (including Logto accounts) and starts clean. |
+| Something is badly broken locally | `just db-reset` deletes all local data and starts clean. |
 
 ## Documentation map
 
@@ -196,6 +192,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Team workflow, Jira, branch, commit and pull request rules |
 | [docs/api-conventions.md](docs/api-conventions.md) | Rules for every HTTP endpoint, with an example |
 | [CLAUDE.md](CLAUDE.md) | Project context for Claude Code and other AI assistants (stack, commands, security rules, open decisions) |
+| [docs/decisions/](docs/decisions/0001-auth-hosting-and-execution.md) | Architecture decisions (auth, hosting, code execution) and their status |
 | [docs/roadmap.md](docs/roadmap.md) | The first big tasks of each teammate, in order, with dependencies |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | The checklist every pull request starts with |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Continuous integration: backend, frontend and naming checks |
@@ -206,9 +203,9 @@ The short version, in full in [CONTRIBUTING.md](CONTRIBUTING.md):
 
 | | Format | Example |
 | --- | --- | --- |
-| Jira task | `[TTVZ][Area] Description` | `[TTVZ][Auth] Implement login with Logto` |
-| Branch | `type/SCRUM-<nr>-short-description` | `feat/SCRUM-58-login-with-logto` |
+| Jira task | `[TTVZ][Area] Description` | `[TTVZ][Auth] Implement login with Firebase` |
+| Branch | `type/SCRUM-<nr>-short-description` | `feat/SCRUM-58-login-with-firebase` |
 | Commit | `type(scope): description` | `feat(auth): add login button to navbar` |
-| Pull request | `SCRUM-<nr> Description` | `SCRUM-58 Implement login with Logto` |
+| Pull request | `SCRUM-<nr> Description` | `SCRUM-58 Implement login with Firebase` |
 
 Before opening a pull request, run `just test`. CI runs the same checks and must be green.

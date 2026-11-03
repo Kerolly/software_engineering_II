@@ -9,7 +9,7 @@ Rules for the HTTP API, shared by backend and frontend. Every endpoint must foll
 - All application endpoints live under `/api/v1/...`.
 - The prefix is configured in **one place** (a path prefix applied to the REST controllers), never repeated in each `@RequestMapping`.
 - `/actuator/**` and `/v3/api-docs` stay at the root.
-- There is no CORS configuration: the browser always talks to a single origin (Vite proxy in dev, Caddy in production).
+- There is no CORS configuration: the browser always talks to a single origin (Vite proxy in dev, a `/api/*` rewrite in `frontend/vercel.json` to the backend in production).
 
 ## Resources and URLs
 
@@ -72,7 +72,7 @@ All errors are `ProblemDetail` (RFC 9457), produced by one global `@RestControll
 
 ## Authentication and roles
 
-- Requests carry `Authorization: Bearer <JWT>`. The backend validates the token as a standard OIDC/JWT, so it does not depend on one provider (the auth provider is still an open decision).
+- Requests carry `Authorization: Bearer <JWT>`. The backend validates the token as a standard OIDC/JWT, so it does not depend on one provider. The provider is Firebase Authentication (see [decisions/0001](decisions/0001-auth-hosting-and-execution.md)): the backend checks the signature, the issuer **and the audience** (`aud` = Firebase project id). Spring does not check the audience by default, so add a validator.
 - The `users` table has its own `id` (UUID v7) and a unique **`authSubject`** column holding the token's `sub`.
 - **RBAC** with two roles, `USER` and `ADMIN`, stored in our database, not in the auth provider.
 - Routes under `/api/v1/admin/**` require `ADMIN`.
@@ -99,8 +99,8 @@ All errors are `ProblemDetail` (RFC 9457), produced by one global `@RestControll
 
 ## Code execution
 
-- The server decides the verdict. The browser may run the tests for instant feedback, but only the server's verdict awards XP or streaks.
-- The backend talks to the code runner through an internal interface (`Grader`), so the implementation can change without touching the public API. The choice (Judge0, a Python runner or something else) is still open.
+- The server decides the verdict. The browser may run the tests for instant feedback ("Run", Pyodide), but only the server's verdict awards XP or streaks. A submission carries the **source code**, never a result computed by the client.
+- The backend talks to the code runner through an internal interface (`Grader`), so the implementation can change without touching the public API. The proposed implementation is a separate Deno + Pyodide service (see [decisions/0001](decisions/0001-auth-hosting-and-execution.md)); it is pending the security review.
 - There are no hidden tests for now: for every test the user must see **where** it failed and **why**. A flag for hidden tests can be added later, because results are already per test.
 
 ## Example (illustrative, not binding)

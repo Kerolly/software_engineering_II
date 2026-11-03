@@ -9,7 +9,7 @@ default:
 setup:
     {{ if os_family() == "windows" { "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1" } else { "bash scripts/setup.sh" } }}
 
-# Start the dev infrastructure (PostgreSQL + Logto)
+# Start the dev infrastructure (PostgreSQL)
 infra:
     docker compose up -d --wait
 
@@ -35,8 +35,8 @@ ps:
 db-shell:
     docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
-# Delete all local data, including Logto accounts
-[confirm("This deletes ALL local data, including Logto accounts. Continue?")]
+# Delete all local data (the local database)
+[confirm("This deletes ALL local data in the local database. Continue?")]
 db-reset:
     docker compose down -v
 

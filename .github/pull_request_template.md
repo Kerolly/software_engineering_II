@@ -1,4 +1,4 @@
-<!-- PR title format: SCRUM-<nr> Description  (e.g. SCRUM-58 Implement login with Logto) -->
+<!-- PR title format: SCRUM-<nr> Description  (e.g. SCRUM-58 Implement login with Firebase) -->
 
 ## Jira
 
@@ -23,4 +23,4 @@ SCRUM-
 - [ ] API changes respect `docs/api-conventions.md`
 - [ ] No secrets committed; new environment variables are in `.env.example`
 - [ ] Docs updated if needed (README, CONTRIBUTING, `CLAUDE.md`)
-- [ ] If this touches code execution or the sandbox: security risks are described above
+- [ ] If this touches code execution or the grader: security risks are described above
