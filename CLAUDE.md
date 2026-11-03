@@ -112,7 +112,7 @@ This is the most sensitive part of the system. User-submitted code must never be
 - No epics available. Grouping is done with a title prefix and labels.
 - **Task title:** `[TTVZ][Area] Description` — e.g. `[TTVZ][Auth] Implement login with Firebase`
 - **Labels:** always `ttvz` + one type label:
-  `backend`, `frontend`, `devops` or `docs`.
+  `backend`, `frontend`, `devsecops` or `docs`.
 - **Task** = internal technical work. **Story** = user-visible functionality ("As a user, I want… so that…").
 
 ### Git

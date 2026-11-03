@@ -20,7 +20,7 @@ Never push directly to `main`. One pull request maps to one Jira task; keep it s
 - One shared Jira project for the whole year; the key is `SCRUM` and numbers are shared across all teams.
 - **Task title:** `[TTVZ][Area] Description`, e.g. `[TTVZ][Auth] Implement login with Firebase`.
 - **Labels:** always `ttvz` + one type label:
-  `backend`, `frontend`, `devops` or `docs`.
+  `backend`, `frontend`, `devsecops` or `docs`.
 - **Task** is internal technical work. **Story** is user-visible functionality ("As a user, I want… so that…").
 - `[TTVZ]` and `[Area]` are used **only** in Jira titles, never in branches, commits or pull requests.
 
