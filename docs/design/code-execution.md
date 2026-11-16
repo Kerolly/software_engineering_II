@@ -1,6 +1,6 @@
 # Code execution and anti-cheat
 
-> **Status:** "Run" in the browser is accepted and Judge0 is dropped. The server-side grader below is a **proposal, pending review by the security teammate** and the free-tier check.
+> **Status:** "Run" in the browser is accepted and Judge0 is dropped. The server-side grader below was **reviewed in [submission-verification.md](submission-verification.md) and approved on conditions** (a separate child process with almost no Deno permissions, the verdict computed in the parent, a memory watchdog). The free-tier check (I7) is still pending.
 
 The one hard requirement: **XP and streaks are awarded only from results the server verified itself.** We have no server of our own and free managed hosts do not allow privileged containers, so the runner has to work inside those limits.
 

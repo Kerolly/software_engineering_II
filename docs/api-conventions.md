@@ -206,7 +206,7 @@ POST /api/v1/admin/problems     (ADMIN only)  →  201, Location: /api/v1/proble
 
 ## Open points
 
-- Rate limiting: where and how much (waiting for the infrastructure teammate). The idea so far: only on `POST /api/v1/submissions`, per user, `429` with `Retry-After`.
+- Rate limiting: proposed in [design/submission-verification.md](design/submission-verification.md#5-rate-limiting-proposal): on `POST /api/v1/submissions` and the admin dry run, per user, at most one submission in flight, `429` with `Retry-After`. Values to confirm.
 - The exact request and response shape of a submission.
 - The auth provider.
 - Which implementation sits behind `Grader`, and the Python-in-the-browser library used for instant feedback.
