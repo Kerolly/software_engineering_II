@@ -17,7 +17,7 @@
 - The child process never sees the expected outputs. Whatever it prints is untrusted data.
 - V8's heap limit does not cover WebAssembly memory, so the parent enforces memory by watching the child.
 - The fallback "grader as a child process of the backend" is **rejected** for security: an escape would land next to the database password and the Firebase key.
-- Rate limiting: on `POST /api/v1/submissions` and the admin dry run, per user, with at most one submission in flight. Details in [section 5](#5-rate-limiting-proposal).
+- Rate limiting: on `POST /api/v1/submissions` and the admin dry run, per user (counted in the database, so restarts do not reset it), per client IP and for all users together, with at most one submission in flight per user. Details in [section 5](#5-rate-limiting-proposal).
 
 ## 1. Ways to verify a submission
 
@@ -80,7 +80,7 @@ flowchart LR
 | --- | --- | --- |
 | Forged verdict | Sending "accepted" from DevTools | The client sends only code. The verdict is computed by the server and stored by the backend. |
 | Escape from Python to JavaScript | `import js`, `run_js`, `ctypes` → `emscripten_run_script` | Assume it happens. The child has no Deno permissions except reading the Pyodide files (3.2). |
-| Escape from the child to the container | A Deno or V8 bug | The container holds only the grader secret: no database, no Firebase. Non-root user, separate service, Deno and Pyodide kept patched. **Residual risk, accepted.** |
+| Escape from the child to the container | A Deno or V8 bug | The container holds only the grader secret: no database, no Firebase. Non-root user, separate service, Deno and Pyodide kept patched. Such an escape also breaks integrity: the grader could report "passed" for the attacker's submissions. **Residual risk, accepted** (see [the end of 3.2](#residual-risk)). |
 | Reading or forging the expected values | Searching memory for expected outputs, or printing fake "passed" lines | Expected values never reach the child. The parent parses the child's output strictly and compares outside it. |
 | Resource exhaustion | Infinite loop, memory bomb, output flood, thousands of Web Workers, deep recursion | Per-child time, memory and output limits. One child at a time. A bounded queue. |
 | Data exfiltration or network access | `fetch`, remote `import()` | `--deny-net` and `--deny-import`. Even a successful request would find no secrets to send. |
@@ -167,6 +167,15 @@ These are the conditions for approving the grader. Each one maps to a test in [s
 
 **Optional hardening, if time allows:** a Pyodide build without `ctypes` and without the `emscripten_run_script*` exports. This is defense in depth, not the boundary, and rebuilding Pyodide is costly.
 
+#### Residual risk
+
+A full escape (out of the child, through a Deno or V8 bug, into the grader container) is accepted as unlikely. It would cost us:
+
+- **Confidentiality:** nothing to steal. The container holds only the grader secret, which lets a caller run code in the grader and nothing more.
+- **Integrity:** the attacker controls the grader, so it can report "passed" for their own submissions, and, until the container restarts, change the results of anyone else graded meanwhile.
+
+The impact stays small because XP is awarded only on the first solve, the daily XP cap holds, and there is no leaderboard in the MVP. Signs to watch: one user solving far more problems in a day than the others, or many verdicts with almost no running time. Recovery: redeploy the grader image (which starts a clean container) and rotate the grader secret.
+
 ### 3.3 The risks listed in code-execution.md
 
 | Risk | Finding | Control |
@@ -186,7 +195,7 @@ These are the conditions for approving the grader. Each one maps to a test in [s
 | **Reading hints for free** | Reading hint text from the API without "revealing" it | `GET` on a problem returns only the number of hints. The text comes only from the reveal endpoint, which records the reveal **before** answering. | backend |
 | **Opening locked problems** | Calling the API for a Medium problem directly | The unlock rule is checked on the server, on the problem detail and on `POST /submissions` (`403` with a ProblemDetail). | backend |
 | **Replaying requests** | Sending an old `POST /submissions` or an old verdict again | A replayed POST creates a new submission that runs again; it can never carry a verdict. A verdict is applied once (state machine and unique keys). Firebase ID tokens expire after an hour and travel only over HTTPS. | backend |
-| **Several accounts** | Throwaway accounts that multiply the rate limits | No leaderboard in the MVP, so there is little to gain. The global queue and concurrency limits protect capacity. Submitting requires a verified email (the `email_verified` claim), and registration can be closed from the settings. | backend |
+| **Several accounts** | Throwaway accounts that multiply the rate limits | No leaderboard in the MVP, so there is little to gain. The per-IP and global limits in section 5 stop a few accounts from filling the grader queue for everybody else, and registration can be closed from the settings. Later, not for the MVP: require a verified email before Submit (we do not verify emails for now). | backend |
 | **A modified client** | Changing the app to show more XP, unlock things, skip penalties | Purely cosmetic: XP, level, streak, badges, unlocks and owned cosmetics are all computed or checked on the server. | backend |
 | **Time zone tricks with the streak** | Changing the time zone to gain or save a day | The time zone is stored in the profile and can change at most once every 7 days (a setting). The day of a verdict is computed with the stored time zone at verdict time. | backend |
 | **Two submissions at the same moment** | Racing two "first solves" | One transaction per verdict and the unique `(user, problem)` key: XP is awarded once. | backend |
@@ -197,9 +206,16 @@ These are the conditions for approving the grader. Each one maps to a test in [s
 
 **Where:**
 - In the backend, on `POST /api/v1/submissions` and on the admin dry run.
-- The key is the **user**, not the IP address: every request arrives through the proxy.
-- The free tier runs a single backend instance, so an in-memory token bucket is enough (Bucket4j or a small map).
-- The "in flight" check reads the submission status from the database, so it survives restarts.
+- Three keys:
+  - **per user**: the normal limit;
+  - **per client IP**: a few throwaway accounts on one machine share it;
+  - **global**, for all users together: even accounts on many IPs cannot fill the grader queue for everybody else.
+- **Per-user and global limits are counted in the database**, from the `submissions` table (an index on `(user_id, created_at)` keeps the query cheap), like the "in flight" check. Render restarts and redeploys the free service at any time, and an in-memory counter would start again from zero.
+- **The per-IP limit is counted in memory**, so we do not store IP addresses. A restart resets it; that is accepted, because the per-user and global limits still hold.
+- **The client IP:**
+  - The Cloudflare Worker copies the client's address (`CF-Connecting-IP`) into a header for the backend.
+  - The backend's Render URL is public, so anyone calling it directly could forge that header. The Worker therefore also sends a secret that only it and the backend know (`PROXY_SHARED_SECRET`, new; add it to the secrets table in `deployment.md` in I4).
+  - The backend trusts the IP header only when that secret matches; otherwise it uses the connection's own address.
 
 **How much** (start values, editable from the admin panel within allowed ranges):
 
@@ -208,6 +224,8 @@ These are the conditions for approving the grader. Each one maps to a test in [s
 | Submissions in flight per user (`PENDING` or `RUNNING`) | 1 | `app_settings` | `429`, "a submission is already being graded", `Retry-After: 5` |
 | Submissions per user per minute | 5 | `app_settings` | `429`, with `Retry-After` set to when the next one is allowed |
 | Submissions per user per day | 200 | `app_settings` | `429`, with `Retry-After` set to midnight UTC |
+| Submissions per client IP per minute | 10 | `app_settings` | `429`, with `Retry-After` set to when the next one is allowed |
+| Submissions in flight for all users together | 10 | `app_settings` | `503`, "the grader is busy", `Retry-After: 30`. Kept below the grader queue (20), so the queue never fills. |
 | Maximum code size | 16 KB | `app_settings` | `400` validation error |
 | Grader queue length | 20 | grader environment (hard limit) | `503` from the grader; the backend retries or reports `INTERNAL_ERROR` |
 | Grader concurrency | 1 | grader environment (hard limit) | — |
@@ -236,7 +254,7 @@ Each payload must give the expected result **and leave the grader healthy for th
 | `import sys; sys.setrecursionlimit(10**6)` then deep recursion | `RUNTIME_ERROR`, the grader stays up |
 | 1 MB of source code | `400` from the backend, the grader is never called |
 | A call to the grader without the secret, or with a wrong one | `401` at once, no child started |
-| 50 submissions in a minute from one user; then from 10 accounts | `429` after the 5th; then `503` and a bounded queue |
+| 50 submissions in a minute from one user; then from 10 accounts on one IP; then from 20 accounts on 20 IPs | `429` after the 5th; `429` per IP after the 10th; `503` once 10 are in flight, and the grader queue never fills |
 
 ## Open points
 
