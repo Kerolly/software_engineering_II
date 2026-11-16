@@ -25,14 +25,14 @@
 | Platform | Limit | What it means for us |
 | --- | --- | --- |
 | Render | 512 MB RAM and 0.1 CPU per free service | The JVM must be sized for 512 MB. Start-up at 0.1 CPU is slow; the spike measures it. |
-| Render | **750 free instance hours per workspace per month**, shared by all free services. A sleeping service uses none. When the hours run out, the service is suspended until the next month. | Backend and grader both awake all month would need about 1,488 h. They fit only because both sleep when idle. **No keep-alive pings.** |
+| Render | **750 free instance hours per workspace per month**, shared by all free services. A sleeping service uses none. When the hours run out, Render suspends all free web services until the start of the next month. | Backend and grader both awake all month would need about 1,488 h. They fit only because both sleep when idle. **No keep-alive pings.** |
 | Render | Sleeps after 15 minutes without inbound traffic. Waking takes about a minute, plus the app's own start-up. | The first request after a pause is slow (see "Consequences"). |
 | Render | Free services **cannot receive private network traffic**. | The grader needs a public HTTPS URL. It answers only requests that carry the shared secret. |
-| Render | 5 GB outbound bandwidth and 500 build minutes per month (Hobby). Without a payment method, new builds stop when the minutes run out. | Build a service only when its folder changes. |
+| Render | 5 GB outbound bandwidth and 500 build minutes per month (Hobby). Without a payment method: when the bandwidth runs out, all free services are suspended for the rest of the month; when the build minutes run out, new builds stop and the services keep running their last build. | Build a service only when its folder changes. |
 | Render | Ephemeral filesystem. The service may be restarted at any time. | No local state. Everything goes in PostgreSQL. |
 | Neon | 1 GB storage and 100 CU-hours per project per month. Scales to zero after 5 minutes (cannot be turned off). 5 GB egress. | Plenty for the MVP. The connection pool must survive the compute suspending. |
 | Neon | Free projects are not paused or deleted for inactivity. When the CU-hours run out, compute stops until the next month, and the data is kept. | No expiry date to plan around. |
-| Cloudflare Workers | 100,000 Worker requests per day (reset at midnight UTC, then error 1027). 10 ms of CPU per request; time spent waiting on `fetch()` does not count. | Only `/api/*` calls count, including result polling. Enough for a class project. |
+| Cloudflare Workers | 100,000 Worker requests per day (reset at midnight UTC, then error 1027). 10 ms of CPU per request; time spent waiting on `fetch()` does not count. Static files are free and unlimited. | Only `/api/*` calls count, including result polling. Over the limit, `/api/*` requests get `429` until the reset. Enough for a class project. |
 
 ## Answers to the hosting questions in the overview
 
@@ -71,10 +71,12 @@
 | Render Postgres | Expires 30 days after creation. |
 | Koyeb | Only one free service, and it needs a card (a $29 pre-authorization hold). |
 | Fly.io | No monthly free allowance. A card is required after a 7-day trial. |
-| Railway | After the trial, only $1 of credit per month (about 100 MB of RAM). |
-| Hugging Face Spaces | Since July 2026, new Docker Spaces on free CPU need a PRO subscription (community reports). |
-| Google Cloud Run, AWS | Generous free tiers, but a payment card is required. |
+| Railway | After the trial, only $1 of credit per month (about 100 MB of RAM†). |
+| Hugging Face Spaces | Since July 2026, new Docker Spaces on free CPU need a PRO subscription†. |
+| Google Cloud Run, AWS | Generous free tiers, but a payment card is required†. |
 | Deno Deploy (for the grader) | No subprocesses, so we cannot start one fresh process per submission. |
+
+† From a personal blog or a community forum, not confirmed on the provider's own pages. Every other figure in this document comes from the provider's documentation or pricing page.
 
 ## Production
 
@@ -156,18 +158,23 @@ flowchart TD
     PASS -- yes --> BEB
     PASS -- yes --> GRB
 
-    subgraph gha["GitHub Actions: deploy workflow (after CI succeeds on main)"]
+    subgraph gha["GitHub Actions: deploy workflow, planned in I4 (after CI succeeds on main)"]
         FEB["npm ci, npm run build<br/>with the VITE_FIREBASE_* variables"] --> FED["wrangler deploy<br/>uses CLOUDFLARE_API_TOKEN"]
     end
 
-    subgraph rnd["Render: Auto-Deploy set to 'After CI Checks Pass'"]
+    subgraph rnd["Render: Auto-Deploy set to 'After CI Checks Pass', planned in I4"]
         BEB["backend: build the Dockerfile<br/>only if backend/** changed"] --> BES["start: Flyway migrations,<br/>health check /actuator/health"]
         GRB["grader: build the Dockerfile<br/>only if grader/** changed"] --> GRS["start, health check"]
     end
 ```
 
+- **Not built yet:** the deploy workflow and the Render and Cloudflare settings are planned in I4. Today `main` only runs `ci.yml`.
 - The existing `ci.yml` already runs on pull requests and on pushes to `main`. The `Conventions` job is skipped on pushes, and Render does not treat a skipped check as a failure.
-- Render waits for the checks of the merge commit, so a red `main` never reaches production.
+- **Both deploy paths follow the aggregate `CI` check**, the job in `ci.yml` that fails when Backend, Frontend or Conventions fails:
+  - the deploy workflow starts on `workflow_run` of `CI` with conclusion `success`;
+  - Render's "After CI Checks Pass" waits for the checks of the merge commit, `CI` among them.
+
+  So a red `main` never reaches production.
 - Building only when a service's folder changes keeps us under Render's 500 build minutes.
 - Flyway runs when the backend starts. A migration must therefore work with the frontend that is already live (add columns first, remove them in a later release).
 
@@ -215,21 +222,36 @@ flowchart LR
   - Call the wake endpoint as soon as the app loads.
   - If it has not answered after a few seconds, show a "waking up the station" message and retry GET requests.
   - Never retry a POST automatically.
-- **Grader:** compare the shared secret in constant time and reject a bad secret before loading Pyodide, so random requests stay cheap.
+- **Grader:**
+  - Compare the shared secret in constant time and reject a bad secret before loading Pyodide, so random requests stay cheap.
+  - Make the secret rotatable: during a rotation the grader accepts the current and the previous secret. Write the steps down: set the new secret on the grader, then on the backend, then remove the old one.
+  - The grader is reachable from the internet on Render's free plan, so it also gets its own cap on the request body size and its own rate limit. Details in `submission-verification.md`, control 9.
 
 ## What the spike (I7) must measure
 
+- **Acceptance threshold, agreed before the spike:** for example, the backend's whole cold start under about 60 s, and a first Submit after a long pause that does not feel broken. Over the threshold, this setup is not accepted, and we move to the options at the end of this section.
 - **Cold start:** the backend's time from sleep to its first answer on Render (wake plus Spring Boot at 0.1 CPU), and its memory use.
-- **Grader:** the memory and time of one Deno + Pyodide run of a trivial test.
+- **Two wake-up cases:**
+  - only the backend asleep;
+  - the backend and the grader both asleep: a Submit after a long pause wakes them one after the other.
+- **Grader:** the start-up time, peak memory and duration of one Deno + Pyodide run of a trivial test. Pyodide loads again for every submission (one fresh process each), so at 0.1 CPU the start-up time matters as much as the memory.
 - **Proxy:** whether the Cloudflare Worker (and Vercel, for comparison) waits through a full cold start. Use an echo endpoint to check that `Authorization` and a POST body arrive unchanged and that nothing is cached.
 - **Neon:** the wake-up time, and whether the pool reconnects after Neon suspends.
 - **Usage:** Render build minutes per deploy, and the instance hours used over one week of normal use.
 
-## Sources (checked 2026-11-08)
+**If the two services do not fit on one Render workspace**, the options to evaluate:
 
-- Render: [Deploy for Free](https://render.com/docs/free), [Pricing](https://render.com/pricing), [Compute plans update](https://render.com/docs/compute-plans-update.md), [Skip auto-deploying if CI checks fail](https://render.com/changelog/skip-auto-deploying-if-ci-checks-fail), [Render in mid-2026: the 1 August plan change](https://jwatte.com/blog/render-com-platform-review/), [Service suspended until the next billing period](https://community.render.com/t/your-service-is-now-suspended-until-the-next-billing-period-upgrade-your-plan-to-restore-your-service/25987)
+1. **Two Render workspaces or accounts, one per service.** This doubles the 750 free hours. Check Render's terms first: it may count as working around the free limits, and it adds one owner per account.
+2. **The grader hosted elsewhere for free, the backend stays on Render.** Azure Container Apps with internal ingress would also make the grader private, which removes the "public URL protected only by a shared secret" risk.
+3. **Both services on another free platform:** Azure for Students, already Plan B.
+
+The child-process fallback is not a way out. It puts the JVM, Deno and Pyodide in the same 512 MB, and a sandbox escape would land next to the database credentials.
+
+## Sources (checked 2026-11-08, re-checked 2026-11-16)
+
+- Render: [Deploy for Free](https://render.com/docs/free), [Pricing](https://render.com/pricing), [Compute plans update](https://render.com/docs/compute-plans-update.md), [Skip auto-deploying if CI checks fail](https://render.com/changelog/skip-auto-deploying-if-ci-checks-fail), [Render in mid-2026: the 1 August plan change](https://jwatte.com/blog/render-com-platform-review/) (personal blog; the figures above come from Render's pricing page)
 - Cloudflare: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [Static assets redirects](https://developers.cloudflare.com/workers/static-assets/redirects/)
 - Vercel: [CDN origin timeout increased to two minutes](https://vercel.com/changelog/cdn-origin-timeout-increased-to-two-minutes), [Hobby plan](https://vercel.com/docs/plans/hobby), [Hobby and GitHub organizations](https://community.vercel.com/t/why-cant-hobby-accounts-deploy-from-organizations/10015)
 - Netlify: [Rewrites and proxies](https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/)
 - Neon: [Pricing](https://neon.com/pricing), [Free plan limits](https://neon.com/faqs/free-plan-limits-and-quotas), [Postgres version support](https://neon.com/docs/postgresql/postgres-version-support)
-- Others: [Supabase pricing](https://supabase.com/docs/pricing), [Aiven free tier](https://aiven.io/docs/products/postgresql/concepts/pg-free-tier), [Koyeb pricing FAQ](https://www.koyeb.com/docs/faq/pricing), [Azure for Students](https://azure.microsoft.com/en-us/free/students), [Hosting free tiers side by side (September 2026)](https://flaviocopes.com/hosting-free-tiers/), [Hugging Face: free CPU Basic Spaces](https://discuss.huggingface.co/t/official-community-complaint-revert-free-cpu-basic-spaces-and-remove-anti-developer-sdk-restrictions/177703)
+- Others: [Supabase pricing](https://supabase.com/docs/pricing), [Aiven free tier](https://aiven.io/docs/products/postgresql/concepts/pg-free-tier), [Koyeb pricing FAQ](https://www.koyeb.com/docs/faq/pricing), [Azure for Students](https://azure.microsoft.com/en-us/free/students), [Hosting free tiers side by side (September 2026)](https://flaviocopes.com/hosting-free-tiers/) (personal blog), [Hugging Face: free CPU Basic Spaces](https://discuss.huggingface.co/t/official-community-complaint-revert-free-cpu-basic-spaces-and-remove-anti-developer-sdk-restrictions/177703) (community forum), [Netlify: credit-based plans](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/), [Netlify: billing FAQ](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/billing-faq-for-credit-based-plans/), [Fly.io pricing](https://docs.fly.io/about/pricing), [Railway free trial](https://docs.railway.com/reference/pricing/free-trial), [Cloudflare: static assets billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)
