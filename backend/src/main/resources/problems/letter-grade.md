@@ -38,7 +38,9 @@ def solve(score):
 | `[100]` | `"A"` | the highest score |
 | `[90]` | `"A"` | exactly on the border of A |
 | `[89]` | `"B"` | just below A |
+| `[80]` | `"B"` | exactly on the border of B |
 | `[75]` | `"C"` | in the middle of C |
+| `[70]` | `"C"` | exactly on the border of C |
 | `[60]` | `"D"` | the lowest passing score |
 | `[59]` | `"F"` | just below D |
 | `[0]` | `"F"` | the lowest score |
