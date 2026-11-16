@@ -23,10 +23,19 @@ How to write a problem. Copy the example at the end, change it and send it as a 
 | `statement` | Markdown: what to do, with 1–2 examples and constraints |
 | `starterCode` | Code the editor starts with |
 | `tests` | List of tests: `args`, `expected`, `description` |
+| `hints` | Up to 3 hints, from a gentle nudge to almost the solution (each one revealed before solving lowers the XP) |
+| `referenceSolution` | A correct solution that passes every test. Never shown to users. |
+
+`args` and `expected` are written as **JSON**:
+
+- `args` is the list of arguments passed to `solve`, so a single list argument is written `[[1, 2]]`;
+- booleans are `true` and `false`, and dictionary keys are strings;
+- dictionaries are compared without regard to the order of their keys;
+- prefer integers, and keep them below 2^53 so that JavaScript can show them exactly.
 
 ## Example
 
-```markdown
+````markdown
 ---
 slug: sum-of-evens
 title: Sum of even numbers
@@ -59,6 +68,23 @@ def solve(numbers):
 | `[[]]` | `0` | an empty list |
 | `[[1, 3, 5]]` | `0` | no even numbers |
 | `[[-2, -4, 3]]` | `-6` | negative even numbers |
+
+## Hints
+
+1. Go through the list with a `for` loop and keep a running total.
+2. A number is even when `number % 2 == 0`.
+3. Add the number to the total only inside `if number % 2 == 0:`.
+
+## Reference solution
+
+```python
+def solve(numbers):
+    total = 0
+    for number in numbers:
+        if number % 2 == 0:
+            total += number
+    return total
 ```
+````
 
 > The format above is a starting point. If the backend teammate prefers JSON or YAML for the seed data, change this document in the same pull request that adds the seed import.
