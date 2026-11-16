@@ -151,6 +151,8 @@ These are the conditions for approving the grader. Each one maps to a test in [s
    - The grader accepts only `POST /grade` with `Authorization: Bearer <GRADER_SHARED_SECRET>`.
    - It compares the secret in constant time before reading the body, and it caps the body size.
    - The free Render service must be public, so this check is what keeps strangers out.
+   - The secret can be rotated. During a rotation the grader accepts the current and the previous secret (`GRADER_SHARED_SECRET_PREVIOUS`, empty the rest of the time). The steps are written down: set the new secret on the grader, then on the backend, then clear the previous one.
+   - The grader has its own rate limit on incoming requests, on top of the queue cap, because anyone on the internet can reach it.
 10. **Nothing to steal.**
     - The parent holds only `GRADER_SHARED_SECRET`. The child holds nothing.
     - No database, no Firebase, no other secrets in the container.
