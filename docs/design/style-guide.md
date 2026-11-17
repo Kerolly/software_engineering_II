@@ -135,6 +135,9 @@ Designed around a deep-space navy canvas with high-contrast text (WCAG AA+ compl
 ## 6. UI Screens Reference (Step 2)
 
 All screens follow the exact DaisyUI tokens and top navigation bar above:
+- **Interactive UI Prototype (Claude Artifact):** https://claude.ai/artifact/9gGLVx27aVKmYdx4gXXScB
+
+Static screen exports (`docs/design/screens/`, to be finalized after team walkthrough):
 - `screens/01-landing-auth.png` — Landing hero, Login/Register, and Forced Password Change state
 - `screens/02-missions-list.png` — Missions grouped by Sector (Topics) with Solved & Locked states
 - `screens/03-problem-workspace.png` — Split-pane statement, CodeMirror 6 editor, Run/Submit, per-test results & Hints
