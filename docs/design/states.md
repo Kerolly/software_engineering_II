@@ -4,22 +4,22 @@ The lifecycles that matter for the backend: a submission, a problem, a user acco
 
 ## 1. Submission
 
-**What it shows.** A submission is created as `PENDING`, becomes `RUNNING` when the backend sends it to the grader, and ends in exactly one final status. A final status is never changed again, which is what makes "each verdict counts once" possible. `INTERNAL_ERROR` means the grader failed (unreachable after one retry, or the submission was stuck in `RUNNING` for too long); it never gives XP.
+**What it shows.** A submission is created as `PENDING`, becomes `RUNNING` when the backend sends it to the grader, and ends in exactly one final status. A final status is never changed again, which is what makes "each verdict counts once" possible. `INTERNAL_ERROR` means the system failed, not the user's code: the grader was unreachable after one retry (always in `RUNNING`, because the status is set before the call), or the submission stayed `PENDING` or `RUNNING` for too long (for example the free host restarted the backend). A cleanup job handles the stuck ones. It never gives XP.
 
-How the submission status is chosen from the per-test statuses (a proposal): if every test passed it is `ACCEPTED`; otherwise it takes the status of the first test that did not pass.
+How the submission status is chosen from the per-test statuses: if every test passed it is `ACCEPTED`; otherwise it takes the status of the first test that was **executed** and did not pass. A test with the status `NOT_EXECUTED` only means that the previous test stopped the run (time or memory limit). A memory limit is reported as `RUNTIME_ERROR` with `error_type = MemoryLimitExceeded`, so there is no separate status for it.
 
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING : POST /api/v1/submissions
     PENDING --> RUNNING : sent to the grader
-    PENDING --> INTERNAL_ERROR : grader unreachable after one retry
+    PENDING --> INTERNAL_ERROR : stuck too long, for example the backend restarted
 
     RUNNING --> ACCEPTED : all tests passed
     RUNNING --> WRONG_ANSWER : a test gave a wrong value
     RUNNING --> RUNTIME_ERROR : the code raised an error
     RUNNING --> TIME_LIMIT_EXCEEDED : time ran out
     RUNNING --> COMPILE_ERROR : syntax error
-    RUNNING --> INTERNAL_ERROR : grader failed, or stuck too long
+    RUNNING --> INTERNAL_ERROR : grader unreachable after one retry, or stuck too long
 
     ACCEPTED --> [*]
     WRONG_ANSWER --> [*]
@@ -43,13 +43,13 @@ stateDiagram-v2
 
 ## 3. User account
 
-**What it shows.** A normal user is `ACTIVE` from the first login. The first admins are created at startup and must change their password before doing anything else (`PASSWORD_CHANGE_REQUIRED`, stored as the flag `must_change_password`). A blocked user is stopped at once, because the status is checked on every request. Blocking and unblocking are admin actions and go to the audit log.
+**What it shows.** A normal user is `ACTIVE` from the first login. The first admins are created at startup and must change their password before doing anything else (`PASSWORD_CHANGE_REQUIRED`, stored as the flag `must_change_password`). The flag is cleared only by the backend, inside `POST /api/v1/me/password`, which changes the password itself through the Firebase Admin SDK (see [flows.md](flows.md), section 10); a client cannot clear it. A blocked user is stopped at once, because the status is checked on every request. Blocking and unblocking are admin actions and go to the audit log.
 
 ```mermaid
 stateDiagram-v2
     [*] --> ACTIVE : first login of a normal user
     [*] --> PASSWORD_CHANGE_REQUIRED : first admin created at startup
-    PASSWORD_CHANGE_REQUIRED --> ACTIVE : password changed
+    PASSWORD_CHANGE_REQUIRED --> ACTIVE : POST /api/v1/me/password succeeds
     ACTIVE --> BLOCKED : admin blocks
     BLOCKED --> ACTIVE : admin unblocks
 ```

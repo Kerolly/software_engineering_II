@@ -8,6 +8,8 @@ Conventions: ids are UUID v7, column names are `snake_case`, timestamps are stor
 
 **What it shows.** What a problem is made of and what happens when someone submits code. A topic groups ordered problems. A problem has tests (all visible), up to 3 hints, and tags. A submission stores the source code and a final status; its result per test (where and why it failed) is stored in `test_results`, so hidden tests can be added later without changing the model. `reference_solution` is only for admins and is never returned to users.
 
+**Untrusted text.** `actual_output`, `stdout` and `error_message` come from the user's code; `statement_markdown` and the hint text come from admins. The grader caps the size of what it returns, and the frontend always renders these values as text (Markdown is sanitized), never as raw HTML.
+
 ```mermaid
 erDiagram
     TOPICS {
@@ -25,7 +27,7 @@ erDiagram
         uuid topic_id FK
         int position "order inside the topic"
         string status "DRAFT, PUBLISHED, ARCHIVED"
-        text statement_markdown
+        text statement_markdown "admin text, rendered sanitized"
         text starter_code
         text reference_solution "never sent to users"
         timestamp created_at
@@ -45,7 +47,7 @@ erDiagram
         uuid id PK
         uuid problem_id FK
         int position "1 to 3"
-        text text
+        text text "admin text, rendered sanitized"
     }
 
     TAGS {
@@ -80,11 +82,11 @@ erDiagram
         uuid submission_id FK
         uuid test_case_id FK
         int test_index
-        string status "PASSED, WRONG_ANSWER, RUNTIME_ERROR, TIME_LIMIT_EXCEEDED"
-        jsonb actual_output
-        text stdout "capped"
-        string error_type
-        text error_message
+        string status "PASSED, WRONG_ANSWER, RUNTIME_ERROR, TIME_LIMIT_EXCEEDED, NOT_EXECUTED"
+        jsonb actual_output "from the user code, capped"
+        text stdout "from the user code, capped"
+        string error_type "e.g. IndexError, MemoryLimitExceeded"
+        text error_message "from the user code, capped"
         int error_line "line in the user's code"
         int runtime_ms
     }
@@ -100,9 +102,11 @@ erDiagram
     TEST_CASES ||--o{ TEST_RESULTS : "checked by"
 ```
 
+A test that was not reached because an earlier test hit the time or memory limit has the status `NOT_EXECUTED`. A memory limit is stored as `RUNTIME_ERROR` with `error_type = MemoryLimitExceeded`, so there is no separate status for it.
+
 ## 2. Users, progress, gamification and administration
 
-**What it shows.** Everything derived from verdicts, plus administration. `xp_events` has a unique `(user_id, problem_id)` key: it is what guarantees that XP is awarded only on the first accepted solve, even when two submissions race. `user_streaks` and `activity_days` hold the streak, the freeze and the star-map grid (one row per day with activity). `hint_reveals` records every hint a user opened; it drives the XP penalty and the Sharpshooter badge. `app_settings` holds every tunable number, and `audit_log` records every admin action. The counters `users.xp` and `users.level` are a copy of what the events add up to, kept for fast reads.
+**What it shows.** Everything derived from verdicts, plus administration. `xp_events` has a unique `(user_id, problem_id)` key: it is what guarantees that XP is awarded only once per problem, even when two submissions race. A row exists **only when XP was actually awarded**: if the daily cap is already reached, no row is written, so the user can still earn that problem's XP later. For this reason "problem solved" is not read from `xp_events`; it means that an `ACCEPTED` submission exists for the user and the problem. `user_streaks` and `activity_days` hold the streak, the freeze and the star-map grid (one row per day with activity). `hint_reveals` records every hint a user opened; it drives the XP penalty and the Sharpshooter badge. `app_settings` holds every tunable number, and `audit_log` records every admin action. The counters `users.xp` and `users.level` are a copy of what the events add up to, kept for fast reads.
 
 ```mermaid
 erDiagram
@@ -115,7 +119,7 @@ erDiagram
         string status "ACTIVE or BLOCKED"
         boolean must_change_password "true for the first admins"
         string time_zone "IANA name, e.g. Europe/Bucharest"
-        timestamp time_zone_changed_at "limit: once every 7 days"
+        timestamp time_zone_changed_at "empty until the user changes it, limit once every 7 days"
         int xp "copy of the sum of xp_events"
         int level
         timestamp created_at
@@ -137,11 +141,11 @@ erDiagram
         uuid id PK
         uuid user_id FK "UNIQUE with problem_id"
         uuid problem_id FK "UNIQUE with user_id"
-        uuid submission_id FK "the accepted submission"
+        uuid submission_id FK "the accepted submission that earned the XP"
         int base_xp "from the difficulty"
-        int hints_used "revealed before this solve"
-        int xp_awarded "after the penalty and the daily cap"
-        date day "user's local day, for the daily cap"
+        int hints_used "revealed before the first accepted submission"
+        int xp_awarded "after the hint penalty"
+        date day "user's local day, counts toward the daily cap"
         timestamp awarded_at
     }
 
@@ -209,8 +213,8 @@ erDiagram
 
     AUDIT_LOG {
         uuid id PK
-        uuid admin_id FK
-        string action "e.g. PROBLEM_PUBLISHED"
+        uuid admin_id FK "empty when the actor is the system"
+        string action "e.g. PROBLEM_PUBLISHED, DRY_RUN"
         string entity_type
         string entity_id
         jsonb details
@@ -250,4 +254,7 @@ erDiagram
 | `test_results` | `UNIQUE (submission_id, test_index)` | one result per test |
 | `users` | `UNIQUE (auth_subject)` | one account per Firebase user; also protects against two first-login requests at once |
 | `submissions` | index `(user_id, submitted_at)` | rate limits are counted from this table |
-| `submissions` | index `(status, submitted_at)` | the job that marks stuck `RUNNING` submissions as `INTERNAL_ERROR` |
+| `submissions` | index `(status, submitted_at)` | the cleanup job that marks old `PENDING` and `RUNNING` submissions as `INTERNAL_ERROR` |
+| `submissions` | index `(user_id, problem_id, status)` | "problem solved" (an `ACCEPTED` submission exists) for unlocks, badges and the first accepted submission |
+| `audit_log` | index `(admin_id, created_at)` | the rate limit of the admin dry run is counted from here |
+| `users` | `time_zone_changed_at` is empty until the user changes the time zone | the first change from the default `UTC` does not start the 7-day limit |
