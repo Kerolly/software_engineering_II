@@ -58,6 +58,16 @@ jobs:
           cache: maven
       - name: Build and test
         run: ./mvnw -B verify
+      # Runs only when the job fails. Artifacts are not masked like the logs,
+      # so this job must never get secrets in its environment.
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-test-reports
+          path: backend/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
 
   frontend:
     name: Frontend
