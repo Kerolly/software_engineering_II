@@ -58,6 +58,12 @@ test-frontend:
     npm install
     npm test
 
+# Run the linters (frontend: oxlint)
+[working-directory('frontend')]
+lint:
+    npm install
+    npm run lint
+
 mvnw := if os_family() == "windows" { '.\mvnw.cmd' } else { "./mvnw" }
 
 # Start everything for development: infrastructure in Docker, backend and frontend on the host

@@ -117,6 +117,7 @@ Run `just` with no arguments to list every command. The ones you will use most:
 | `just ps` | Show the status of the containers |
 | `just test` | Run all tests (backend and frontend) |
 | `just test-backend` / `just test-frontend` | Run one side only |
+| `just lint` | Run the linters (frontend: oxlint) |
 | `just db-shell` | Open `psql` in the application database |
 | `just db-reset` | **Delete all local data** (asks for confirmation) |
 | `just setup` | Check and install what the project needs |
@@ -219,4 +220,4 @@ The short version, in full in [CONTRIBUTING.md](CONTRIBUTING.md):
 | Commit | `type(scope): description` | `feat(auth): add login button to navbar` |
 | Pull request | `SCRUM-<nr> Description` | `SCRUM-58 Implement login with Firebase` |
 
-Before opening a pull request, run `just test`. CI runs the same checks and must be green.
+Before opening a pull request, run `just lint` and `just test`. CI runs the same checks and must be green; [CI checks](CONTRIBUTING.md#ci-checks) explains what it runs and how to read a failed run.
