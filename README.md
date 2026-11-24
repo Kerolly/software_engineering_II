@@ -208,6 +208,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [docs/roadmap.md](docs/roadmap.md) | The first big tasks of each teammate, in order, with dependencies |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | The checklist every pull request starts with |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Continuous integration: backend, frontend and naming checks |
+| [.github/workflows/codeql.yml](.github/workflows/codeql.yml) | CodeQL security scanning of the Java, TypeScript and workflow code |
 
 ## Working in the team
 

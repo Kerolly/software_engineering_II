@@ -100,3 +100,31 @@ When you change frontend code, also run `npm run build` in `frontend/`. It is th
 - Run `just lint` and `just test` before opening a pull request (see [CI checks](#ci-checks)).
 - API changes follow `docs/api-conventions.md`.
 - Code, comments, commits, pull requests and docs are written in English.
+
+## Code scanning (CodeQL)
+
+CodeQL ([.github/workflows/codeql.yml](.github/workflows/codeql.yml)) looks for security bugs in the backend (Java), the frontend (TypeScript) and the GitHub Actions workflows. It runs on every pull request, on every push to `main` and every Monday on `main`, so new CodeQL rules also check code that has not changed. The alerts are in the **Security and quality** tab, under **Code scanning**.
+
+### Read an alert
+
+- On a pull request, CodeQL reports only the alerts on lines that the pull request changes. Each one is an annotation on its line in **Files changed**, and the **Code scanning results / CodeQL** check fails when an alert is critical or high, or an error.
+- To list the alerts of one pull request in **Code scanning**, filter with `is:open pr:<number>`, for example `is:open pr:58`.
+- Open the alert, from the annotation or from **Code scanning**. It shows:
+  - the rule and its **Rule ID** (for example `js/xss`), the severity and the CWE;
+  - the line, and for data-flow rules **Show paths**: how untrusted data (the *source*, for example a request parameter or the URL) reaches a dangerous call (the *sink*, for example an SQL query or `innerHTML`);
+  - the rule's help (**Show more**): what the problem is and how to fix it, with examples.
+
+### Handle an alert
+
+1. **Check whether it is real.** Can untrusted data actually reach this code? Does something on the path already make it safe, such as validation, escaping or a parameterized query?
+2. **Real:** fix it in the same pull request. For an alert on `main`, create a Jira task `[TTVZ][Security] …` with the link to the alert, and fix it in a `fix(security): …` pull request. The alert closes by itself when the next analysis no longer finds it.
+3. **Not real:** use **Dismiss alert**, pick the closest reason (*False positive*, *Used in tests* or *Won't fix*) and write in the comment why. The comment is all the next reader has, so "not relevant" is not enough.
+4. **Not sure:** ask in the pull request and mention the DevSecOps teammate.
+
+Do not merge with an open critical or high alert, and do not dismiss an alert only to turn the check green.
+
+| Severity | What to do |
+| --- | --- |
+| Critical, High | Fix it before merging |
+| Medium | Fix it before merging, or create a Jira task and link it in the pull request |
+| Low, Warning, Note | Fix it if it is cheap, otherwise dismiss it with a reason |
