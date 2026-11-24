@@ -19,7 +19,7 @@ SCRUM-
 ## Checklist
 
 - [ ] The PR title is `SCRUM-<nr> Description`
-- [ ] `just test` passes
+- [ ] `just lint` and `just test` pass
 - [ ] API changes respect `docs/api-conventions.md`
 - [ ] No secrets committed; new environment variables are in `.env.example`
 - [ ] Docs updated if needed (README, CONTRIBUTING, `CLAUDE.md`)
