@@ -93,6 +93,21 @@ When you change frontend code, also run `npm run build` in `frontend/`. It is th
 5. **Cancelled** usually means that a newer push replaced the run. If a job *exceeded the maximum execution time* (`timeout-minutes` in `ci.yml`), look for a test or a step that hangs. If GitHub itself failed (a download, a runner), use **Re-run failed jobs** on the run page.
 6. **Re-run does not pick up a new pull request title:** it reuses the title the run started with. After fixing the title, push a new commit, or close and reopen the pull request. A wrong branch name needs a correctly named branch and a new pull request.
 
+### Update a pinned action
+
+Every action in `.github/workflows/` is pinned to a full commit SHA, with its version in a comment. Dependabot is not set up yet, so nothing updates them for us. Check the actions we use once a month, and at once when one of them publishes a security advisory:
+
+1. Read the release notes of the new version on the action's **Releases** page.
+2. Find the commit of the new tag, for example:
+
+   ```bash
+   git ls-remote --tags https://github.com/github/codeql-action 'refs/tags/v4.39.5*'
+   ```
+
+   An annotated tag prints two lines. Use the SHA of the line that ends in `^{}`: it is the commit. The other SHA is the tag object.
+3. Replace the SHA in every `uses:` line of that action, and update the version in the comment (`# v4.39.5`). The `init` and `analyze` steps of CodeQL always use the same SHA.
+4. Open a pull request with a `ci(deps): …` commit. CI and CodeQL must be green before the merge.
+
 ## Code rules
 
 - Never commit `.env`, passwords, API keys or tokens. Configuration goes through environment variables, each with an entry in `.env.example`.
@@ -103,7 +118,10 @@ When you change frontend code, also run `npm run build` in `frontend/`. It is th
 
 ## Code scanning (CodeQL)
 
-CodeQL ([.github/workflows/codeql.yml](.github/workflows/codeql.yml)) looks for security bugs in the backend (Java), the frontend (TypeScript) and the GitHub Actions workflows. It runs on every pull request, on every push to `main` and every Monday on `main`, so new CodeQL rules also check code that has not changed. The alerts are in the **Security and quality** tab, under **Code scanning**.
+CodeQL ([.github/workflows/codeql.yml](.github/workflows/codeql.yml)) looks for security bugs in the backend (Java), the frontend (TypeScript) and the GitHub Actions workflows. It runs on every pull request, on every push to `main` and every Monday on `main`, so new CodeQL rules also check code that has not changed. It can also be started by hand: **Actions** → **CodeQL** → **Run workflow**. The alerts are in the **Security and quality** tab, under **Code scanning**.
+
+- **Keep the default setup off.** CodeQL runs from this workflow (the *advanced setup*). If the *default setup* of code scanning is turned on in the repository settings, GitHub rejects the results of the workflow. To check: **Settings** → **Advanced Security** → **CodeQL analysis**. If it offers **Switch to advanced**, the default setup is on.
+- **Java is analyzed without a build** (`build-mode: none`), so the workflow needs no JDK 25. This is less complete than a build: code generated during the build is not analyzed, and GitHub rates the accuracy of this mode *good*, against *best* for a manual build. If the backend starts generating code or grows a lot, switch Java to `build-mode: manual` with a JDK 25 build step.
 
 ### Read an alert
 
