@@ -8,9 +8,10 @@ on:
 permissions:
   contents: read
 
-# A new push to the same branch or pull request cancels the older run.
+# A new push to a pull request cancels its older run. Runs on main are grouped
+# by commit, so they are never cancelled and every merge gets its own result.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 # Hardening rules for this file:
