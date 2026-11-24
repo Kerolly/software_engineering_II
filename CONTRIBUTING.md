@@ -60,11 +60,44 @@ The title must contain the Jira code. Write it clearly; it is what the team sees
 - At least one approval is required before merging.
 - Anything that touches code execution or the grader needs a security-minded review. Flag the risks in the description.
 
+## CI checks
+
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on every pull request and on every push to `main`. `main` is protected: the **CI** check must pass and a teammate must approve before the merge.
+
+### Run the same checks locally
+
+Before you push, run:
+
+```bash
+just lint
+just test
+```
+
+| CI job | What CI runs | Run it locally |
+| --- | --- | --- |
+| Backend | `./mvnw -B verify` against PostgreSQL 18 | `just test-backend` (starts PostgreSQL; `verify` in CI also packages the app) |
+| Frontend | `npm ci`, `npm run lint`, `npm test`, `npm run build` | `just lint`, `just test-frontend`, then `npm run build` in `frontend/` |
+| Conventions | The pull request title and the branch name | Compare them with [Branches](#branches) and [Pull requests](#pull-requests) |
+
+When you change frontend code, also run `npm run build` in `frontend/`. It is the only check that runs the TypeScript compiler (`tsc -b`); the linter and the tests do not.
+
+### When CI is red
+
+1. Open the failed check from the pull request (**Details**) or from the **Checks** tab. The **CI** check only collects the results of the other jobs, and its log lists them. Read the job with the red ✗: **Backend**, **Frontend** or **Conventions**.
+2. Open the step with the red ✗ and read its log from the bottom up:
+   - **Backend:** `Tests run: …, Failures: …` with the name of the failed test, or `COMPILATION ERROR` with the file and the line.
+   - **Frontend:** oxlint prints the file, the line and the rule; Vitest marks the failed test with `FAIL`; the build prints TypeScript errors as `error TS…`. If `npm ci` fails because `package-lock.json` does not match `package.json`, run `npm install` in `frontend/` and commit the updated `package-lock.json`.
+   - **Conventions:** the error line says what was expected and what it got.
+3. When the backend job fails, the run also has a **backend-test-reports** artifact at the bottom of its **Summary** page, kept for 7 days. It holds the full report of each test class; open the `.txt` file of the failed one.
+4. Reproduce the failure locally with the command from the table, fix it and push. CI runs again on the new commit and cancels the older run.
+5. **Cancelled** usually means that a newer push replaced the run. If a job *exceeded the maximum execution time* (`timeout-minutes` in `ci.yml`), look for a test or a step that hangs. If GitHub itself failed (a download, a runner), use **Re-run failed jobs** on the run page.
+6. **Re-run does not pick up a new pull request title:** it reuses the title the run started with. After fixing the title, push a new commit, or close and reopen the pull request. A wrong branch name needs a correctly named branch and a new pull request.
+
 ## Code rules
 
 - Never commit `.env`, passwords, API keys or tokens. Configuration goes through environment variables, each with an entry in `.env.example`.
 - Files use LF line endings (enforced by `.gitattributes`).
-- Run `just test` before opening a pull request.
+- Run `just lint` and `just test` before opening a pull request (see [CI checks](#ci-checks)).
 - API changes follow `docs/api-conventions.md`.
 - Code, comments, commits, pull requests and docs are written in English.
 
