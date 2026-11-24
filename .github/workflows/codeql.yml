@@ -1,0 +1,51 @@
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Every Monday at 03:27 UTC, so new CodeQL queries also check code that
+    # has not changed.
+    - cron: "27 3 * * 1"
+
+permissions: {}
+
+# A new push to a pull request cancels its older run. Runs on main (pushes and
+# the weekly schedule) are grouped by event and commit, so they are never
+# cancelled.
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+# Same hardening rules as ci.yml: every action is pinned to a full commit SHA
+# with its version in a comment, every job has timeout-minutes, and
+# actions/checkout does not keep the token for later steps.
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read # check out the code
+      security-events: write # upload the results to Security > Code scanning
+      actions: read # only needed if the repository becomes private
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, java-kotlin, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # build-mode none: CodeQL reads the source without compiling it, so the
+      # Java analysis does not need JDK 25 on the runner.
+      - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          category: /language:${{ matrix.language }}
