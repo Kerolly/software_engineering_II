@@ -223,7 +223,7 @@ sequenceDiagram
 
 ## 8. Blocking a user
 
-**What it shows.** An admin blocks a user. An admin cannot block themselves or the last active admin; the check runs in the same transaction as the block, with the active admin rows locked, so two admins cannot block each other at the same moment. The status change and the audit entry are written in that transaction. The Firebase account is also disabled and its refresh tokens revoked, so the user cannot get new tokens. If the Firebase call fails, the block still works, because the status is checked on every request (section 3).
+**What it shows.** An admin blocks a user and must give a reason (not blank, at most 500 characters), which is stored in `users.blocked_reason` and in the audit entry. Unblocking clears `blocked_reason`; the earlier reasons stay in `audit_log`. An admin cannot block themselves or the last active admin; the check runs in the same transaction as the block, with the active admin rows locked, so two admins cannot block each other at the same moment. The status change and the audit entry are written in that transaction. The Firebase account is also disabled and its refresh tokens revoked, so the user cannot get new tokens. If the Firebase call fails, the block still works, because the status is checked on every request (section 3).
 
 ```mermaid
 sequenceDiagram
@@ -234,16 +234,20 @@ sequenceDiagram
     participant FB as Firebase Admin SDK
 
     Admin->>B: Click Block on a user
-    B->>API: POST /api/v1/admin/users/id/block (proposed)
+    B->>API: POST /api/v1/admin/users/id/block with the reason (proposed)
     API->>API: Check the role is ADMIN
-    API->>DB: Lock the active admin rows and read the target user
-    alt target is the caller or the last active admin
-        API-->>B: 409 ProblemDetail
+    alt reason missing, blank or too long
+        API-->>B: 400 ProblemDetail
     else
-        API->>DB: UPDATE user status BLOCKED and INSERT audit_log (one transaction)
-        API->>FB: Disable the account and revoke refresh tokens
-        API-->>B: 204 No Content
-        Note over API,DB: The blocked user's next request gets 403, even with a valid token
+        API->>DB: Lock the active admin rows and read the target user
+        alt target is the caller or the last active admin
+            API-->>B: 409 ProblemDetail
+        else
+            API->>DB: UPDATE user status BLOCKED and blocked_reason, INSERT audit_log with the reason (one transaction)
+            API->>FB: Disable the account and revoke refresh tokens
+            API-->>B: 204 No Content
+            Note over API,DB: The blocked user's next request gets 403, even with a valid token
+        end
     end
 ```
 

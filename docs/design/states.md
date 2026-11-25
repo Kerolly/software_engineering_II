@@ -43,15 +43,15 @@ stateDiagram-v2
 
 ## 3. User account
 
-**What it shows.** A normal user is `ACTIVE` from the first login. The first admins are created at startup and must change their password before doing anything else (`PASSWORD_CHANGE_REQUIRED`, stored as the flag `must_change_password`). The flag is cleared only by the backend, inside `POST /api/v1/me/password`, which changes the password itself through the Firebase Admin SDK (see [flows.md](flows.md), section 10); a client cannot clear it. A blocked user is stopped at once, because the status is checked on every request. Blocking and unblocking are admin actions and go to the audit log.
+**What it shows.** A normal user is `ACTIVE` from the first login. The first admins are created at startup and must change their password before doing anything else (`PASSWORD_CHANGE_REQUIRED`, stored as the flag `must_change_password`). The flag is cleared only by the backend, inside `POST /api/v1/me/password`, which changes the password itself through the Firebase Admin SDK (see [flows.md](flows.md), section 10); a client cannot clear it. A blocked user is stopped at once, because the status is checked on every request. Blocking needs a reason (`blocked_reason`), which is cleared when the user is unblocked. Blocking and unblocking are admin actions and go to the audit log, which keeps the reason history.
 
 ```mermaid
 stateDiagram-v2
     [*] --> ACTIVE : first login of a normal user
     [*] --> PASSWORD_CHANGE_REQUIRED : first admin created at startup
     PASSWORD_CHANGE_REQUIRED --> ACTIVE : POST /api/v1/me/password succeeds
-    ACTIVE --> BLOCKED : admin blocks
-    BLOCKED --> ACTIVE : admin unblocks
+    ACTIVE --> BLOCKED : admin blocks, a reason is required
+    BLOCKED --> ACTIVE : admin unblocks, the reason is cleared
 ```
 
 ## 4. Daily streak

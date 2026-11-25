@@ -106,7 +106,7 @@ A test that was not reached because an earlier test hit the time or memory limit
 
 ## 2. Users, progress, gamification and administration
 
-**What it shows.** Everything derived from verdicts, plus administration. `xp_events` has a unique `(user_id, problem_id)` key: it is what guarantees that XP is awarded only once per problem, even when two submissions race. A row exists **only when XP was actually awarded**: if the daily cap is already reached, no row is written, so the user can still earn that problem's XP later. For this reason "problem solved" is not read from `xp_events`; it means that an `ACCEPTED` submission exists for the user and the problem. `user_streaks` and `activity_days` hold the streak, the freeze and the star-map grid (one row per day with activity). `hint_reveals` records every hint a user opened; it drives the XP penalty and the Sharpshooter badge. `app_settings` holds every tunable number, and `audit_log` records every admin action. The counters `users.xp` and `users.level` are a copy of what the events add up to, kept for fast reads.
+**What it shows.** Everything derived from verdicts, plus administration. `xp_events` has a unique `(user_id, problem_id)` key: it is what guarantees that XP is awarded only once per problem, even when two submissions race. A row exists **only when XP was actually awarded**: if the daily cap is already reached, no row is written, so the user can still earn that problem's XP later. For this reason "problem solved" is not read from `xp_events`; it means that an `ACCEPTED` submission exists for the user and the problem. `user_streaks` and `activity_days` hold the streak, the freeze and the star-map grid (one row per day with activity). `hint_reveals` records every hint a user opened; it drives the XP penalty and the Sharpshooter badge. `app_settings` holds every tunable number, and `audit_log` records every admin action. The counters `users.xp` and `users.level` are a copy of what the events add up to, kept for fast reads. `users.blocked_reason` holds the reason an admin gave when blocking the user. It is required when blocking, cleared when the user is unblocked (the earlier reasons stay in `audit_log.details`, together with who blocked and when), and shown only to admins, as text, never to the blocked user.
 
 ```mermaid
 erDiagram
@@ -117,6 +117,7 @@ erDiagram
         string display_name
         string role "USER or ADMIN"
         string status "ACTIVE or BLOCKED"
+        string blocked_reason "set when an admin blocks, empty otherwise, admin text"
         boolean must_change_password "true for the first admins"
         string time_zone "IANA name, e.g. Europe/Bucharest"
         timestamp time_zone_changed_at "empty until the user changes it, limit once every 7 days"
@@ -252,6 +253,7 @@ erDiagram
 | `test_cases` | `UNIQUE (problem_id, index)` | tests are numbered per problem |
 | `hints` | `UNIQUE (problem_id, position)` and `CHECK (position BETWEEN 1 AND 3)` | at most 3 hints |
 | `test_results` | `UNIQUE (submission_id, test_index)` | one result per test |
+| `users` | `CHECK (status = 'BLOCKED' OR blocked_reason IS NULL)` | a reason exists only while the user is blocked |
 | `users` | `UNIQUE (auth_subject)` | one account per Firebase user; also protects against two first-login requests at once |
 | `submissions` | index `(user_id, submitted_at)` | rate limits are counted from this table |
 | `submissions` | index `(status, submitted_at)` | the cleanup job that marks old `PENDING` and `RUNNING` submissions as `INTERNAL_ERROR` |
