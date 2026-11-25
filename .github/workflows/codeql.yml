@@ -8,12 +8,14 @@ on:
     # Every Monday at 03:27 UTC, so new CodeQL queries also check code that
     # has not changed.
     - cron: "27 3 * * 1"
+  # Started by hand from the Actions tab, for example on main right after a merge.
+  workflow_dispatch:
 
 permissions: {}
 
-# A new push to a pull request cancels its older run. Runs on main (pushes and
-# the weekly schedule) are grouped by event and commit, so they are never
-# cancelled.
+# A new push to a pull request cancels its older run. Other runs (pushes to
+# main, the weekly schedule, manual runs) are grouped by event and commit, so a
+# run of one kind never cancels a run of another.
 concurrency:
   group: codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
@@ -40,7 +42,8 @@ jobs:
         with:
           persist-credentials: false
       # build-mode none: CodeQL reads the source without compiling it, so the
-      # Java analysis does not need JDK 25 on the runner.
+      # Java analysis does not need JDK 25 on the runner. It is less complete
+      # than a build: see "Code scanning (CodeQL)" in CONTRIBUTING.md.
       - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           languages: ${{ matrix.language }}
