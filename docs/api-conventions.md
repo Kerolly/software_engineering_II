@@ -73,9 +73,12 @@ All errors are `ProblemDetail` (RFC 9457), produced by one global `@RestControll
 ## Authentication and roles
 
 - Requests carry `Authorization: Bearer <JWT>`. The backend validates the token as a standard OIDC/JWT, so it does not depend on one provider. The provider is Firebase Authentication (email and password; the frontend gets an ID token with the Firebase SDK and sends it to the API): the backend checks the signature, the issuer **and the audience** (`aud` = Firebase project id). Spring does not check the audience by default, so add a validator.
+- Token checks (all of them): `alg` is RS256 and `kid` is one of Google's public keys; the signature is valid; `exp` is in the future and `iat` and `auth_time` are in the past; `aud` is the Firebase project id; `iss` is `https://securetoken.google.com/<projectId>`; `sub` is not empty.
 - The `users` table has its own `id` (UUID v7) and a unique **`authSubject`** column holding the token's `sub`.
 - **RBAC** with two roles, `USER` and `ADMIN`, stored in our database, not in the auth provider.
 - Routes under `/api/v1/admin/**` require `ADMIN`.
+- The backend reads the user's status from its own database on every request. A `BLOCKED` user gets `403`, even with a valid token.
+- The first admins have `must_change_password = true`. Until they change it, every endpoint except `POST /api/v1/me/password` answers `403` with `type` `https://se2/errors/password-change-required`. The flag is cleared only by that endpoint, never by a client call that says "I changed it" (*proposed*).
 - XP and streaks are awarded only from verdicts computed by the server.
 
 ## DTOs
@@ -184,9 +187,10 @@ GET /api/v1/submissions/0192f3a4-7c1e-7b2a-9d11-3f5a8c0e2b44
 
 A test that crashes has `"status": "RUNTIME_ERROR"`, `"actualOutput": null` and `"error": { "type": "IndexError", "message": "list index out of range", "line": 4 }`, where `line` refers to the user's code, never to server internals.
 
-- Per-test statuses: `PASSED`, `WRONG_ANSWER`, `RUNTIME_ERROR`, `TIME_LIMIT_EXCEEDED`.
+- Per-test statuses: `PASSED`, `WRONG_ANSWER`, `RUNTIME_ERROR`, `TIME_LIMIT_EXCEEDED`, `NOT_EXECUTED`. A memory limit is a `RUNTIME_ERROR` with `"error": { "type": "MemoryLimitExceeded", ... }`, not a separate status.
 - Submission statuses: `PENDING`, `RUNNING`, `ACCEPTED`, `WRONG_ANSWER`, `RUNTIME_ERROR`, `TIME_LIMIT_EXCEEDED`, `COMPILE_ERROR`, `INTERNAL_ERROR`.
-- All tests run, within an overall time limit; tests not reached when the limit hits are reported as not executed.
+- All tests run, within an overall time limit; tests not reached when the limit hits are reported with the status `NOT_EXECUTED`.
+- The submission status is `ACCEPTED` when every test passed; otherwise it is the status of the first test that was executed and did not pass.
 
 **Error**
 
@@ -203,6 +207,22 @@ GET /api/v1/me
 
 POST /api/v1/admin/problems     (ADMIN only)  →  201, Location: /api/v1/problems/two-sum
 ```
+
+**Other endpoints from the backend design** (*proposed*, to be confirmed with `admin-panel.md`)
+
+```http
+PATCH /api/v1/me                                   { "timeZone": "Europe/Bucharest" }   →  200
+POST  /api/v1/me/password                          { "newPassword": "..." }             →  204 (only while must_change_password is true)
+POST  /api/v1/problems/{slug}/hints/{position}/reveal                                   →  200 { "position": 2, "text": "..." }
+POST  /api/v1/admin/users/{id}/block               { "reason": "..." }                 →  204 (400 without a reason, 409 for yourself or the last active admin)
+POST  /api/v1/admin/users/{id}/unblock                                                  →  204 (clears the reason)
+POST  /api/v1/admin/problems/{id}/dry-run          { "code": "..." }                    →  200 (nothing stored, no XP)
+POST  /api/v1/admin/problems/{id}/publish                                               →  200, or 409 with the failing tests
+```
+
+- The first change of the time zone from the default `UTC` does not start the 7-day limit.
+- The block `reason` is required, not blank, at most 500 characters. It is stored as `blockedReason` on the user and is returned only by the admin endpoints, never by `/api/v1/me` or in the `403` that a blocked user receives.
+- The problem detail returns only the number of hints; the text comes from the reveal endpoint, which records the reveal before it answers.
 
 ## Open points
 
