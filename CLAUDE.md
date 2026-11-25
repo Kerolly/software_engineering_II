@@ -85,6 +85,7 @@ just dev     # every day: PostgreSQL + backend + frontend
 | `just infra` / `just down` | Start / stop only PostgreSQL |
 | `just dev-backend` / `just dev-frontend` | Run one app on the host |
 | `just test` | Run all tests (`test-backend` also starts PostgreSQL; `test-frontend` runs Vitest) |
+| `just lint` | Run the linters (frontend: oxlint) |
 | `just up` / `just restart [service]` | `up` is an alias of `infra`; restart the Docker services |
 | `just logs [service]` | Follow logs of the Docker services |
 | `just ps` | Container status |

@@ -117,6 +117,7 @@ Run `just` with no arguments to list every command. The ones you will use most:
 | `just ps` | Show the status of the containers |
 | `just test` | Run all tests (backend and frontend) |
 | `just test-backend` / `just test-frontend` | Run one side only |
+| `just lint` | Run the linters (frontend: oxlint) |
 | `just db-shell` | Open `psql` in the application database |
 | `just db-reset` | **Delete all local data** (asks for confirmation) |
 | `just setup` | Check and install what the project needs |
@@ -207,6 +208,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [docs/roadmap.md](docs/roadmap.md) | The first big tasks of each teammate, in order, with dependencies |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | The checklist every pull request starts with |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Continuous integration: backend, frontend and naming checks |
+| [.github/workflows/codeql.yml](.github/workflows/codeql.yml) | CodeQL security scanning of the Java, TypeScript and workflow code |
 
 ## Working in the team
 
@@ -219,4 +221,4 @@ The short version, in full in [CONTRIBUTING.md](CONTRIBUTING.md):
 | Commit | `type(scope): description` | `feat(auth): add login button to navbar` |
 | Pull request | `SCRUM-<nr> Description` | `SCRUM-58 Implement login with Firebase` |
 
-Before opening a pull request, run `just test`. CI runs the same checks and must be green.
+Before opening a pull request, run `just lint` and `just test`. CI runs the same checks and must be green; [CI checks](CONTRIBUTING.md#ci-checks) explains what it runs and how to read a failed run.
