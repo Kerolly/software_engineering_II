@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 SE2
+# 🚀 Kodeling
 
 **Learn Python by solving missions, earn stardust, keep your orbit alive.**
 
@@ -14,7 +14,6 @@ A LeetCode-style learning platform for **Python beginners**: solve programming p
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
 University project for **Software Engineering II**, built by team **TTVZ**.
-*SE2 is a placeholder name; the final product name is not decided yet.*
 
 </div>
 
@@ -118,11 +117,12 @@ Run `just` with no arguments to list every command. The ones you will use most:
 | `just test` | Run all tests (backend and frontend) |
 | `just test-backend` / `just test-frontend` | Run one side only |
 | `just lint` | Run the linters (frontend: oxlint) |
+| `just lint-backend` | Run Checkstyle on the backend |
+| `just gen-api` | Regenerate `backend/openapi.json` from the backend OpenAPI spec |
 | `just db-shell` | Open `psql` in the application database |
 | `just db-reset` | **Delete all local data** (asks for confirmation) |
 | `just setup` | Check and install what the project needs |
 
-Coming with the first API endpoint: `just gen-api`, which regenerates `backend/openapi.json` and the frontend API client.
 
 ## How it fits together
 
