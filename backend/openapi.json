@@ -1,0 +1,49 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "Kodeling API",
+    "description" : "REST API for the Kodeling Python learning platform",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "paths" : {
+    "/api/v1/ping" : {
+      "get" : {
+        "tags" : [ "system" ],
+        "summary" : "Wake up the backend service",
+        "operationId" : "getPing",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "PingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      }
+    }
+  }
+}

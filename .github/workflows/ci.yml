@@ -57,6 +57,8 @@ jobs:
           distribution: temurin
           java-version: 25
           cache: maven
+      - name: Checkstyle
+        run: ./mvnw -B checkstyle:check
       - name: Build and test
         run: ./mvnw -B verify
       # Runs only when the job fails. Artifacts are not masked like the logs,
@@ -130,3 +132,4 @@ jobs:
           case "$RESULTS" in
             *failure*|*cancelled*) exit 1 ;;
           esac
+

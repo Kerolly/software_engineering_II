@@ -2,7 +2,7 @@
 
 Rules for the HTTP API, shared by backend and frontend. Every endpoint must follow them; the checks listed at the end enforce the ones that can be automated.
 
-> **Status:** the items marked *provisional* still need the backend teammate's agreement. The exact shape of a submission is **not final** (see the example at the end).
+> **Status:** the exact shape of a submission is **not final** (see the example at the end).
 
 ## Base path
 
@@ -35,7 +35,7 @@ All errors are `ProblemDetail` (RFC 9457), produced by one global `@RestControll
 
 ```json
 {
-  "type": "https://se2/errors/validation",
+  "type": "https://kodeling/errors/validation",
   "title": "Validation failed",
   "status": 400,
   "detail": "One or more fields are invalid",
@@ -78,27 +78,24 @@ All errors are `ProblemDetail` (RFC 9457), produced by one global `@RestControll
 - **RBAC** with two roles, `USER` and `ADMIN`, stored in our database, not in the auth provider.
 - Routes under `/api/v1/admin/**` require `ADMIN`.
 - The backend reads the user's status from its own database on every request. A `BLOCKED` user gets `403`, even with a valid token.
-- The first admins have `must_change_password = true`. Until they change it, every endpoint except `POST /api/v1/me/password` answers `403` with `type` `https://se2/errors/password-change-required`. The flag is cleared only by that endpoint, never by a client call that says "I changed it" (*proposed*).
+- The first admins have `must_change_password = true`. Until they change it, every endpoint except `POST /api/v1/me/password` answers `403` with `type` `https://kodeling/errors/password-change-required`. The flag is cleared only by that endpoint, never by a client call that says "I changed it" (*proposed*).
 - XP and streaks are awarded only from verdicts computed by the server.
 
 ## DTOs
 
-*Provisional.* Controllers never return JPA entities, only DTOs (Java records). Mapping is manual at first.
+Controllers never return JPA entities, only DTOs (Java records). Mapping is manual at first.
 
 ## Backend layout
 
-*Provisional.* Packages are organized by feature under `com.ttvz.se2` (`problems/`, `submissions/`, `users/`), each with its own controller, service, repository and DTOs, not by technical layer.
-
+Packages are organized by feature under `com.ttvz.kodeling` (`system/`, `problems/`, `submissions/`, `users/`), alongside shared cross-cutting packages (`config/`, `common/`), each feature having its own controller, service, repository and DTOs, not by technical layer.
 ## OpenAPI and the generated client
 
 - Every operation has a unique **`operationId`** in `verbNoun` camelCase (`listProblems`, `getProblem`, `createSubmission`, `getMe`). Orval names the generated functions after it. Do not rely on the names generated from method names.
 - Every operation has one tag, the feature name (`problems`, `submissions`), so Orval groups the client by feature.
 - The OpenAPI snapshot is committed as **`backend/openapi.json`**. Orval reads it from there.
-- `just gen-api` regenerates it: it starts PostgreSQL, runs the snapshot test in "write" mode (`-Dopenapi.write=true`), then runs Orval to regenerate the frontend client. Run it after **every** API change.
+- `just gen-api` regenerates `backend/openapi.json`: it starts PostgreSQL and runs the snapshot test in "write" mode (`-Dopenapi.write=true`) (Orval client generation will be hooked up here by the frontend setup). Run it after **every** API change.
 - The same snapshot test, run normally by `just test`, fails when the code and `backend/openapi.json` differ.
 - A second automated test reads the spec and fails if an operation has no tag, a non-unique `operationId` or one that is not `verbNoun` camelCase.
-
-> `just gen-api` and these tests arrive with the first endpoint.
 
 ## Code execution
 
@@ -196,7 +193,7 @@ A test that crashes has `"status": "RUNTIME_ERROR"`, `"actualOutput": null` and 
 
 ```http
 GET /api/v1/problems/nope  →  404
-{ "type": "https://se2/errors/not-found", "title": "Problem not found", "status": 404, "detail": "No problem with slug 'nope'." }
+{ "type": "https://kodeling/errors/not-found", "title": "Problem not found", "status": 404, "detail": "No problem with slug 'nope'." }
 ```
 
 **Current user and administration**

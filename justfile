@@ -82,3 +82,13 @@ dev-backend:
 dev-frontend:
     npm install
     npm run dev
+
+# Run Checkstyle on the backend
+[working-directory('backend')]
+lint-backend:
+    {{mvnw}} -B checkstyle:check
+
+# Regenerate backend/openapi.json (starts PostgreSQL if needed)
+[working-directory('backend')]
+gen-api: db-up
+    {{mvnw}} -B test "-Dtest=OpenApiSnapshotTest" "-Dopenapi.write=true"

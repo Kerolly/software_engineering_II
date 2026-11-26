@@ -1,10 +1,10 @@
-package com.ttvz.se2;
+package com.ttvz.kodeling;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class BackendApplicationTests {
+class KodelingApplicationTests {
 
 	@Test
 	void contextLoads() {
