@@ -6,7 +6,7 @@ The lifecycles that matter for the backend: a submission, a problem, a user acco
 
 **What it shows.** A submission is created as `PENDING`, becomes `RUNNING` when the backend sends it to the grader, and ends in exactly one final status. A final status is never changed again, which is what makes "each verdict counts once" possible. `INTERNAL_ERROR` means the system failed, not the user's code: the grader was unreachable after one retry (always in `RUNNING`, because the status is set before the call), or the submission stayed `PENDING` or `RUNNING` for too long (for example the free host restarted the backend). A cleanup job handles the stuck ones. It never gives XP.
 
-How the submission status is chosen from the per-test statuses: if every test passed it is `ACCEPTED`; otherwise it takes the status of the first test that was **executed** and did not pass. A test with the status `NOT_EXECUTED` only means that the previous test stopped the run (time or memory limit). A memory limit is reported as `RUNTIME_ERROR` with `error_type = MemoryLimitExceeded`, so there is no separate status for it.
+How the submission status is chosen from the grader's answer: if the grader's `outcome` is `COMPILE_ERROR`, the submission is `COMPILE_ERROR` (every test is then `NOT_EXECUTED`). Otherwise, if every test passed it is `ACCEPTED`; otherwise it takes the status of the first test that was **executed** and did not pass. A test with the status `NOT_EXECUTED` only means that the previous test stopped the run (time or memory limit). A memory limit is reported as `RUNTIME_ERROR` with `error_type = MemoryLimitExceeded`, so there is no separate status for it.
 
 ```mermaid
 stateDiagram-v2

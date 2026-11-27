@@ -191,9 +191,8 @@ This is the context-level view. The architecture diagrams add what happens insid
 
 ## Still undecided
 
-- Hosting platforms.
-- Whether the grader proposal is approved, and if two free services fit.
-- Problem style: function (`def solve(...)`) or stdin and stdout.
+- Hosting platforms. The grader's hosting test is running ([grader.md](design/grader.md#5-hosting-decision-and-test)).
+- Problem style: a function, with its name stored per problem, is proposed in [grader.md](design/grader.md#10-decisions-to-confirm-with-the-team) (decision 6). It replaces stdin and stdout.
 - Product name and logo, and the final look of the theme.
 - Language of the user interface (English or Romanian), desktop-first or mobile-first, light and dark themes.
 - Code editor: Monaco or CodeMirror.
