@@ -5,9 +5,9 @@ How to write a problem. Copy the example at the end, change it and send it as a 
 ## Rules for a good problem
 
 - Audience: **beginners in Python**. One idea per problem; no tricks.
-- Style (provisional, see [design/code-execution.md](design/code-execution.md)): a function with a given name, e.g. `def solve(n)`. The statement says exactly what it takes and returns.
+- Style: a function with a given name, `solve` unless the problem sets another one in `entryPoint` (proposed in [design/grader.md](design/grader.md#10-decisions-to-confirm-with-the-team), decision 6). The statement says exactly what it takes and returns.
 - Every test is visible to the user, so each one needs a **short description** that explains why it exists ("an empty list", "negative numbers"). The user sees it when the test fails.
-- Inputs must be small and fast. Each test has a hard time limit on the server; a correct simple solution must pass well within it.
+- At most **50 tests**. Inputs must be small and fast. On the server each test has 2 s and all the tests together have 5 s, at a tenth of a CPU; a correct simple solution should need well under 0.1 s per test ([design/grader.md](design/grader.md#3-limits)).
 - The expected output is compared outside Python as a value (not printed text), so it must be a plain value: number, string, list, dict, boolean.
 - Write the reference solution and run it against all tests before submitting the problem.
 
@@ -21,8 +21,9 @@ How to write a problem. Copy the example at the end, change it and send it as a 
 | `topic` | One of: `basics`, `loops`, `strings`, `lists`, `dicts`, `functions` (extend as needed) |
 | `position` | Order inside the topic (1, 2, 3, ...) |
 | `statement` | Markdown: what to do, with 1–2 examples and constraints |
+| `entryPoint` | The function the tests call. Optional, `solve` by default (proposed) |
 | `starterCode` | Code the editor starts with |
-| `tests` | List of tests: `args`, `expected`, `description` |
+| `tests` | List of at most 50 tests: `args`, `expected`, `description` |
 | `hints` | Up to 3 hints, from a gentle nudge to almost the solution (each one revealed before solving lowers the XP) |
 | `referenceSolution` | A correct solution that passes every test. Never shown to users. |
 
