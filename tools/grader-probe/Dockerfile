@@ -7,7 +7,7 @@ RUN npm pack pyodide@314.0.8 --silent \
 
 FROM denoland/deno:2.9.6
 COPY --from=pyodide /pyodide /opt/pyodide
-COPY child.js snap_make.js server.js /opt/grader/
+COPY child.js snap_make.js server.js calibration.json /opt/grader/
 # Build step: start Pyodide once, without user code, and save the memory snapshot.
 RUN mkdir -p /opt/grader/empty \
  && deno run --no-prompt --allow-read=/opt/pyodide --allow-write=/opt/grader/pyodide.snapshot \

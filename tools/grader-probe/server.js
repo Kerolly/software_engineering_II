@@ -1,8 +1,8 @@
 // Grader probe for the SCRUM-237 hosting test.
 // At every start (so at every Render wake-up) it runs a self-test: it starts children exactly like
 // the grader will (same Deno flags, snapshot, memory cap), one after the other: three trivial tests,
-// a memory bomb, an endless loop killed after 2 s (kill latency) and escape attempts. It keeps the
-// times and memory figures. Nobody can make it run anything: GET /health and GET /stats only read.
+// a memory bomb, an endless loop killed after 2 s (kill latency), escape attempts and the time limit
+// calibration on the 25 problems. It keeps the times and memory figures. Nobody can make it run anything: GET /health and GET /stats only read.
 // POST /probe exists only if PROBE_SECRET is set.
 const bootAt = new Date();
 const env = (name, fallback) => Deno.env.get(name) ?? fallback;
@@ -13,6 +13,7 @@ const CHILD = env("PROBE_CHILD", "/opt/grader/child.js");
 const SNAPSHOT = env("PROBE_SNAPSHOT", "/opt/grader/pyodide.snapshot");
 const WORKDIR = env("PROBE_WORKDIR", "/opt/grader/empty");
 const DENO = env("PROBE_DENO", "deno");
+const CALIBRATION = env("PROBE_CALIBRATION", "/opt/grader/calibration.json");
 
 const encoder = new TextEncoder();
 function secretMatches(header) {
@@ -52,7 +53,7 @@ async function peakResidentMB(pid) {
 
 // Starts one child. The child is killed after 180 s in any case. With loopKillMs, it is killed that
 // many milliseconds after it reports that its endless loop started (the per-test time limit).
-async function runChild(mode, loopKillMs = null) {
+async function runChild(mode, loopKillMs = null, stdinText = null) {
   const start = performance.now();
   const child = new Deno.Command(DENO, {
     args: [
@@ -65,7 +66,7 @@ async function runChild(mode, loopKillMs = null) {
     clearEnv: true,
     env: { PATH: "/usr/local/bin:/usr/bin:/bin" },
     cwd: WORKDIR,
-    stdin: "null",
+    stdin: stdinText === null ? "null" : "piped",
     stdout: "piped",
     stderr: "piped",
   }).spawn();
@@ -90,6 +91,12 @@ async function runChild(mode, loopKillMs = null) {
   };
   const hardKiller = setTimeout(kill, 180000);
   let loopKiller = null;
+
+  if (stdinText !== null) {
+    const writer = child.stdin.getWriter();
+    await writer.write(new TextEncoder().encode(stdinText));
+    await writer.close();
+  }
 
   // Read stdout as it comes, up to 64 KB, so the loop timer can start when the loop starts.
   const stderrText = new Response(child.stderr).text();
@@ -136,6 +143,7 @@ const selfTest = { state: "running" };
     selfTest.bomb = await runChild("bomb");
     selfTest.spin = await runChild("spin", 2000);
     selfTest.escape = await runChild("escape");
+    selfTest.calibrate = await runChild("calibrate", null, await Deno.readTextFile(CALIBRATION));
     selfTest.parentRssMB = Math.round(Deno.memoryUsage().rss / 1048576);
     selfTest.containerPeakMB = await containerPeakMB();
     selfTest.containerLimitMB = await containerLimitMB();

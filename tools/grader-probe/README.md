@@ -13,7 +13,8 @@ At every start (so at every Render wake-up) it runs a self-test, one child after
 1. three trivial tests;
 2. a memory bomb;
 3. an endless loop, killed 2 s after it starts (how fast a kill works when the child uses all the CPU);
-4. escape attempts through the JavaScript bridge: read the parent's environment, its own environment and `/etc/passwd`, read an environment variable, write a file, run a command, open a network connection. Only the outcome is published, never what was read.
+4. escape attempts through the JavaScript bridge: read the parent's environment, its own environment and `/etc/passwd`, read an environment variable, write a file, run a command, open a network connection. Only the outcome is published, never what was read;
+5. the time limit calibration: the reference solution and a naive but correct solution of each of the 25 problems run every test three times, sent to the child on stdin as the grader will send a submission. A slow recursive Fibonacci shows how fast a solution that should time out grows.
 
 It runs nothing on request, so it needs **no secret**. `POST /probe` exists only if `PROBE_SECRET` is set; the test does not use it.
 
@@ -27,6 +28,8 @@ It runs nothing on request, so it needs **no secret**. `POST /probe` exists only
 | `server.js` | The self-test at start-up, `GET /health` and `GET /stats` |
 | `child.js` | The child: restores the snapshot, then runs one of the four fixed scenarios |
 | `snap_make.js` | The build step that writes the snapshot |
+| `calibration.json` | The 25 problems' tests with the reference and the naive solutions, made by `calibration/make_calibration.py` |
+| `calibration/` | The naive solutions and the script that writes `calibration.json` (run it again when the problems change) |
 | `measure.sh` | Wakes the backend, then the grader, times both, follows `/health` during the self-test, appends a line to `results.tsv` |
 | `backend-standin/Dockerfile` | Backend stand-in, built from the repository root |
 
@@ -40,9 +43,9 @@ In Render: **New → Web Service → Public Git Repository**, URL `https://githu
 | Branch | `docs/SCRUM-237-grader-design` | `docs/SCRUM-237-grader-design` |
 | Region | Frankfurt | Frankfurt |
 | Language | Docker | Docker |
-| Root Directory | `tools/grader-probe` | *(empty: the repository root)* |
-| Dockerfile Path | `./Dockerfile` | `tools/grader-probe/backend-standin/Dockerfile` |
-| Docker Build Context Directory | `.` | `.` |
+| Root Directory | *(empty)* | *(empty)* |
+| Dockerfile Path | `tools/grader-probe/Dockerfile` | `tools/grader-probe/backend-standin/Dockerfile` |
+| Docker Build Context Directory | `tools/grader-probe` | *(empty: the repository root)* |
 | Instance Type | Free | Free |
 | Health Check Path | `/health` | `/actuator/health/liveness` |
 
@@ -78,6 +81,7 @@ Repeat on three different days and keep the median.
 | `selfTest.bomb.child[1]` | Should be `MemoryError after ... MB`, with `nextRun` `45` | Check only |
 | `selfTest.spin.killToExitMs` | Time from the kill to the end of the process | Kill latency |
 | `selfTest.escape.child[1].escape` | Every attempt should be `denied` | Check only |
+| `selfTest.calibrate.child[1].calibration` | The slowest test and all the tests of each problem, in milliseconds, for both solutions | The time limits (section 3) |
 | `bootAt` | On a `cold` line it must be a few seconds before the measurement | Check only |
 
 ## Clean up
