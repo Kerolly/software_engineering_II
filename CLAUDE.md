@@ -99,7 +99,7 @@ Planned: `just gen-api` (regenerates `backend/openapi.json` and the Orval client
 This is the most sensitive part of the system. User-submitted code must never be able to affect our infrastructure.
 
 - **"Run" (instant feedback):** Python runs client-side in the browser with Pyodide (WebAssembly) in a Web Worker. Never trusted for scoring; the client can always forge a result.
-- **"Submit" (graded):** the browser sends the **source code**, never a verdict. The server re-executes it and decides. Proposed implementation (**pending review by the security teammate**, see `docs/design/code-execution.md`): a separate `grader` service running the same Pyodide build in Deno with permissions denied (`--deny-net --deny-env --deny-run --deny-write`), one process per submission, time / heap / output limits, no secrets and no database access, called by the backend through the `Grader` interface. Judge0 is dropped (it needs privileged containers).
+- **"Submit" (graded):** the browser sends the **source code**, never a verdict. The server re-executes it and decides. Implementation (approved on conditions in `docs/design/submission-verification.md`; final design in `docs/design/grader.md`): a separate `grader` service running the same Pyodide build in Deno with permissions denied (`--deny-net --deny-env --deny-run --deny-write`), one process per submission, time / heap / output limits, no secrets and no database access, called by the backend through the `Grader` interface. Judge0 is dropped (it needs privileged containers).
 - Expected test outputs must never enter the interpreter that runs user code; compare outside Python.
 - Rate-limit submissions per user. Award XP only on the first solve of a problem and cap XP per day.
 - XP and streaks are awarded **only** from server-side verified results.
@@ -169,8 +169,8 @@ Full rules are in `CONTRIBUTING.md`. The Jira code must appear in the branch nam
 
 - Final product name and GitHub organization name (SE2 is used as the placeholder name everywhere: DB, Compose project, env vars)
 - Supported languages at launch (Python only, or also Java / C++ / JavaScript)
-- Approval of the Deno + Pyodide grader for server-side execution (proposed in `docs/design/code-execution.md`, needs the security review), or the child-process fallback; whether two free services on the backend host fit is **not verified yet** (to be measured in a deployment test)
-- Function-based (`def solve(...)`) or stdin/stdout problems
+- Where the grader is hosted: the Render test of `docs/design/grader.md` (section 5) is running; it also measures whether two free services fit
+- Problem style: a function whose name is stored per problem (`entryPoint`, `solve` by default) is proposed in `docs/design/grader.md` (decision 6), instead of stdin/stdout
 - Code editor: Monaco vs. CodeMirror
 - Hosting platforms for the frontend, the backend (and grader) and PostgreSQL, all free (decided after the hosting research and a deployment test)
 - Rate limiting: where and how much (waiting for the infrastructure teammate)

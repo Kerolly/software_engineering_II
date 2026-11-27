@@ -167,6 +167,7 @@ backend/              Spring Boot API (Maven)
 frontend/             React + Vite app
 docs/                 Documentation and design documents
 scripts/              Setup scripts used by `just setup`
+tools/grader-probe/   The grader's hosting test on Render and its benchmark scripts
 .github/              PR template and CI workflow
 docker-compose.yml    Development services: PostgreSQL
 justfile              All project commands
@@ -201,6 +202,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | [docs/api-conventions.md](docs/api-conventions.md) | Rules for every HTTP endpoint, with an example |
 | [CLAUDE.md](CLAUDE.md) | Project context for Claude Code and other AI assistants (stack, commands, security rules, open decisions) |
 | [docs/design/code-execution.md](docs/design/code-execution.md) | How code is run and verified, and how we limit cheating |
+| [docs/design/grader.md](docs/design/grader.md) | The grader service: its contract with the backend, limits, security controls, hosting test and implementation outline |
 | [docs/overview.md](docs/overview.md) | **Start here for the app itself**: what it does, user and admin journeys, parts of the system, glossary, and what to read for each kind of work |
 | [docs/design/gamification.md](docs/design/gamification.md) | XP, levels, streak, unlocks and badges |
 | [docs/design/admin-panel.md](docs/design/admin-panel.md) | Admin panel: problems, hints, users, settings |
