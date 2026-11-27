@@ -101,9 +101,11 @@ The token checks, all of them (so the auth task does not miss one):
 
 ## 4. Submitting code
 
-**What it shows.** The full Submit chain. The browser sends only the source code. Before anything is stored, the backend rejects what it can: a problem that is not published or is locked for this user (the unlock rule is checked on the server), code that is too large, and rate limits. Otherwise it stores a `PENDING` submission and answers `202` immediately. The grader call runs in the background, with a timeout long enough for a sleeping grader to wake up and one retry. Meanwhile the browser polls until the status leaves `PENDING` and `RUNNING`.
+**What it shows.** The full Submit chain. The browser sends only the source code. Before anything is stored, the backend rejects what it can: a problem that is not published or is locked for this user (the unlock rule is checked on the server), code that is too large, and rate limits. Otherwise it stores a `PENDING` submission and answers `202` immediately. The grader call runs in the background, with a 150 s timeout, long enough for a sleeping grader to wake up. It is retried once only when the grader did not accept it; after the timeout the backend gives up and the grader drops the request ([grader.md](grader.md#2-contract-between-the-backend-and-the-grader)). Meanwhile the browser polls until the status leaves `PENDING` and `RUNNING`.
 
-The free host can restart the backend at any time. A cleanup job therefore moves submissions that stay `PENDING` or `RUNNING` for too long to `INTERNAL_ERROR`. "Grader unreachable" always happens in `RUNNING`, because the status is set before the call.
+To shorten the wait after a long pause, the backend wakes the grader early: it calls the grader's `GET /health`, without waiting for the answer, when the backend starts and when a user opens a problem page (at most once every 10 minutes).
+
+The free host can restart the backend at any time. A cleanup job therefore moves submissions that stay `PENDING` or `RUNNING` for more than 5 minutes to `INTERNAL_ERROR`. "Grader unreachable" always happens in `RUNNING`, because the status is set before the call.
 
 ```mermaid
 sequenceDiagram
@@ -132,7 +134,7 @@ sequenceDiagram
             alt grader answers
                 G-->>API: Result per test
                 API->>DB: One transaction: results, final status, XP, streak, badges
-            else grader unreachable after one retry
+            else not accepted after one retry, or no answer within 150 s
                 API->>DB: UPDATE status INTERNAL_ERROR
             end
         and browser polling

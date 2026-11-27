@@ -227,9 +227,9 @@ The impact stays small because XP is awarded only on the first solve, the daily 
 | Submissions per user per minute | 5 | `app_settings` | `429`, with `Retry-After` set to when the next one is allowed |
 | Submissions per user per day | 200 | `app_settings` | `429`, with `Retry-After` set to midnight UTC |
 | Submissions per client IP per minute | 10 | `app_settings` | `429`, with `Retry-After` set to when the next one is allowed |
-| Submissions in flight for all users together | 10 | `app_settings` | `503`, "the grader is busy", `Retry-After: 30`. Kept below the grader queue (20), so the queue never fills. |
+| Submissions in flight for all users together | 5 (was 10; proposed in [grader.md](grader.md#31-capacity-and-waiting-times), decision 11) | `app_settings` | `503`, "the grader is busy", `Retry-After: 30`. Kept below the grader queue (10), so the queue never fills. |
 | Maximum code size | 16 KB | `app_settings` | `400` validation error |
-| Grader queue length | 20 | grader environment (hard limit) | `503` from the grader; the backend retries or reports `INTERNAL_ERROR` |
+| Grader queue length | 10 (was 20, see the row above) | grader environment (hard limit) | `503` from the grader; the backend retries or reports `INTERNAL_ERROR` |
 | Grader concurrency | 1 | grader environment (hard limit) | — |
 | Grader time, memory and output limits | measured in I7 | grader environment (hard limit) | per-test verdict |
 
@@ -256,7 +256,7 @@ Each payload must give the expected result **and leave the grader healthy for th
 | `import sys; sys.setrecursionlimit(10**6)` then deep recursion | `RUNTIME_ERROR`, the grader stays up |
 | 1 MB of source code | `400` from the backend, the grader is never called |
 | A call to the grader without the secret, or with a wrong one | `401` at once, no child started |
-| 50 submissions in a minute from one user; then from 10 accounts on one IP; then from 20 accounts on 20 IPs | `429` after the 5th; `429` per IP after the 10th; `503` once 10 are in flight, and the grader queue never fills |
+| 50 submissions in a minute from one user; then from 10 accounts on one IP; then from 20 accounts on 20 IPs | `429` after the 5th; `429` per IP after the 10th; `503` once 5 are in flight, and the grader queue never fills |
 
 ## Open points
 
